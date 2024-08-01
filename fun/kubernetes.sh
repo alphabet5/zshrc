@@ -9,7 +9,7 @@ kgp() {
   else
     a=$(kubectl get pods -o json -A | jq -r '.items[] | select((.metadata.name | test(".*'$1'.*")) or (.metadata.labels[] | test(".*'$1'.*"))) | "\(.metadata.namespace) \(.metadata.name)"')
   fi
-  echo $a | awk '{ print length($0) " " $0; }' $file | sort -n | cut -d " " -f 2- | grep -m 1 .
+  echo $a | awk '{ print length($0) " " $0; }' | sort -n | cut -d " " -f 2- | grep -m 1 .
 }
 kgpa() {
   if [ $2 ]; then
