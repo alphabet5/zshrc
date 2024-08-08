@@ -21,7 +21,9 @@ brew uninstall gnu-sed
 ```
 - python
 ```bash
-brew install python
+brew install python3
+python3 -m pip install rich --break-system-packages
+python3 -m pip install jira --break-system-packages
 ```
 
 - probably a bunch of things I haven't documented yet. ¯\_(ツ)_/¯
