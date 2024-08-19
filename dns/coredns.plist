@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <!-- Label identifies the service, and must be unique -->
+        <key>Label</key>
+        <string>com.example.coredns</string>
+
+        <!-- ProgramArguments defines the command to run and its arguments -->
+        <key>ProgramArguments</key>
+        <array>
+            <string>/usr/local/bin/coredns</string> <!-- Path to the coredns binary -->
+            <string>-conf</string>
+            <string>"~/Documents/GitHub/zshrc/dns/Corefile"</string> <!-- Path to your Corefile -->
+        </array>
+
+        <!-- RunAtLoad will start the service when the plist is loaded -->
+        <key>RunAtLoad</key>
+        <true/>
+
+        <!-- KeepAlive will restart the service if it exits -->
+        <key>KeepAlive</key>
+        <true/>
+
+        <!-- StandardOutPath and StandardErrorPath specify where to log output and errors -->
+        <key>StandardOutPath</key>
+        <string>/var/log/coredns.log</string>
+        
+        <key>StandardErrorPath</key>
+        <string>/var/log/coredns_error.log</string>
+    </dict>
+</plist>
