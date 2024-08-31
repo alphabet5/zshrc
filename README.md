@@ -6,7 +6,7 @@
 ```bash
 git clone github.com/alphabet5/zshrc
 cd zshrc
-echo "source $(pwd)/init/init.sh" >> ~/.zshrc 
+echo "source $(pwd)/init/init.sh" >> ~/.zshrc
 ```
 
 ## Requirements (on mac)
