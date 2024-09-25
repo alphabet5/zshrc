@@ -70,6 +70,12 @@ VPN_DNS_IP
 PD_API_KEY
 DOCKER_REGISTRY=https://docker-registry.example.local
 ```
+## ksniff
 
+If ctr doesn't exist in the path
+
+```
+cd /bin ; sudo ln -s /var/lib/rancher/rke2/bin/ctr ctr
+```
 
 - probably a bunch of things I haven't documented yet. ¯\_(ツ)_/¯
