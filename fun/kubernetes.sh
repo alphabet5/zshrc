@@ -1,5 +1,3 @@
-KUBESEAL_CERT="Documents/GitHub/kubernetes-ops/sealedsecrets.crt"
-KUBESEAL_SCOPE="cluster-wide"
 seal(){
 echo -n $1 | kubeseal --scope=$KUBESEAL_SCOPE --raw --from-file=/dev/stdin --cert=$KUBESEAL_CERT
 }
@@ -55,18 +53,20 @@ k() {
       cid=($(kubectl get pod -n "${pod[1]}" "${pod[2]}" -o yaml | yq '.status.containerStatuses[0].containerID' | sed -r 's/containerd:\/\/(.*)/\1/g'))
       echo "kubectl get pod -n "${pod[1]}" "${pod[2]}" -o yaml | yq '.spec.nodeName'"
       node=$(kubectl get pod -n "${pod[1]}" "${pod[2]}" -o yaml | yq '.spec.nodeName')
-      echo "(ssh $node 'sudo CRI_CONFIG_FILE=/var/lib/rancher/rke2/agent/etc/crictl.yaml /var/lib/rancher/rke2/bin/crictl inspect '$cid) | jq '.info.pid'"
-      pid=($(echo $(ssh $node 'sudo CRI_CONFIG_FILE=/var/lib/rancher/rke2/agent/etc/crictl.yaml /var/lib/rancher/rke2/bin/crictl inspect '$cid) | jq '.info.pid'))
-      echo "ssh ${node} 'sudo nsenter -t ${pid} -n; exec bash'"
-      ssh $node 'sudo nsenter -t '$pid' -n; exec bash'
+      echo "echo \$(ssh $node \"sudo CRI_CONFIG_FILE=/var/lib/rancher/rke2/agent/etc/crictl.yaml /var/lib/rancher/rke2/bin/crictl inspect $cid\") | jq '.info.pid'"
+      all=$(ssh $node "sudo CRI_CONFIG_FILE=/var/lib/rancher/rke2/agent/etc/crictl.yaml /var/lib/rancher/rke2/bin/crictl inspect $cid")
+      # echo $all
+      pid=$(echo $all | grep -v 'io.kubernetes.container.preStopHandler' | jq '.info.pid')
+      echo "ssh -t ${node} 'sudo nsenter -t ${pid} -n -- bash -l'"
+      ssh -t $node 'sudo nsenter -t '$pid' -n -- bash -l'
       ;;
     l)
       echo $a
       echo "kubectl logs -f -n ${pod[1]} ${pod[2]}"
       kubectl logs -f -n ${pod[1]} ${pod[2]}
       ;;
-    p)
-      echo pod
+    certs)
+      ssh $2 "timeout 1 openssl s_client -connect 127.0.0.1:10257 -showcerts 2>&1 | grep -A 19 -m 1 'BEGIN CERTIFICATE' | sudo tee /var/lib/rancher/rke2/server/tls/kube-controller-manager/kube-controller-manager.crt & timeout 1 openssl s_client -connect 127.0.0.1:10259 -showcerts 2>&1 | grep -A 19 -m 1 'BEGIN CERTIFICATE' | sudo tee /var/lib/rancher/rke2/server/tls/kube-scheduler/kube-scheduler.crt &"
       ;;
   esac
 }
