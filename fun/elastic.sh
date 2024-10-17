@@ -45,3 +45,8 @@ function es-post() {
   curl -H "Authorization: Basic ${ELASTIC_CREDENTIALS}" -X POST \
   "https://${ELASTIC_HOST}:${ELASTIC_PORT}/$1"
 }
+
+function es-roll() {
+  curl -H "Authorization: Basic ${ELASTIC_CREDENTIALS}" -X POST \
+  "https://${ELASTIC_HOST}:${ELASTIC_PORT}/$1/_rollover"
+}

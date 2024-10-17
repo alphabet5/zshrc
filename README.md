@@ -35,6 +35,13 @@ sudo launchctl load $MYDIR/dns/coredns.plist
 cp dns/Corefile 
 ```
 
+### Other brew stuff
+
+```bash
+brew install rsync
+
+```
+
 #### dns/Corefile example
 
 ```text
@@ -69,7 +76,14 @@ GEOIPUPDATE_ACCOUNT_KEY
 VPN_DNS_IP
 PD_API_KEY
 DOCKER_REGISTRY=https://docker-registry.example.local
+IDRAC_USER=
+IDRAC_PASSWORD=
+NETBOX_URL=
+NETBOX_TOKEN=
+KUBESEAL_CERT="/path/to/sealedsecrets.crt"
+KUBESEAL_SCOPE="cluster-wide"
 ```
+
 ## ksniff
 
 If ctr doesn't exist in the path
