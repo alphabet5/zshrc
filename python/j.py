@@ -79,4 +79,4 @@ if sys.argv[1] == "standup":
     for i in inprogress:
         if i.raw["fields"]["status"]["name"] == "In progress":
             out["today"].append((i.raw["key"] + " - " + i.raw["fields"]["summary"]))
-    print(yaml.dump(out, sort_keys=False))
+    print(yaml.dump(out, sort_keys=False).replace("OPS", "0PS"))
