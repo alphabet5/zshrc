@@ -53,10 +53,12 @@ k() {
       cid=($(kubectl get pod -n "${pod[1]}" "${pod[2]}" -o yaml | yq '.status.containerStatuses[0].containerID' | sed -r 's/containerd:\/\/(.*)/\1/g'))
       echo "kubectl get pod -n "${pod[1]}" "${pod[2]}" -o yaml | yq '.spec.nodeName'"
       node=$(kubectl get pod -n "${pod[1]}" "${pod[2]}" -o yaml | yq '.spec.nodeName')
-      echo "echo \$(ssh $node \"sudo CRI_CONFIG_FILE=/var/lib/rancher/rke2/agent/etc/crictl.yaml /var/lib/rancher/rke2/bin/crictl inspect $cid\") | jq '.info.pid'"
-      all=$(ssh $node "sudo CRI_CONFIG_FILE=/var/lib/rancher/rke2/agent/etc/crictl.yaml /var/lib/rancher/rke2/bin/crictl inspect $cid")
+      echo "echo \$(ssh $node \"sudo CRI_CONFIG_FILE=/var/lib/rancher/rke2/agent/etc/crictl.yaml /var/lib/rancher/rke2/bin/crictl inspect -o yaml $cid\") | yq '.info.pid'"
+      all=$(ssh $node "sudo CRI_CONFIG_FILE=/var/lib/rancher/rke2/agent/etc/crictl.yaml /var/lib/rancher/rke2/bin/crictl inspect -o yaml $cid")
       # echo $all
-      pid=$(echo $all | grep -v 'io.kubernetes.container.preStopHandler' | jq '.info.pid')
+      # yq avoids issues with newlines and json quoting weirdness / invalid json output from crictl
+      # https://github.com/kubernetes-sigs/cri-tools/pull/1493 (plus some other issues)
+      pid=$(echo $all | yq '.info.pid')
       echo "ssh -t ${node} 'sudo nsenter -t ${pid} -n -- bash -l'"
       ssh -t $node 'sudo nsenter -t '$pid' -n -- bash -l'
       ;;
