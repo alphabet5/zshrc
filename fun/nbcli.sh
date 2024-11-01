@@ -14,3 +14,8 @@ function nb-interface() {
   curl -H "Authorization: Token $NETBOX_TOKEN" \
   -H "Content-Type: application/json" "$NETBOX_URL/api/dcim/interfaces/${1}/" 2>/dev/null | jq
 }
+
+function nb-devices() {
+  curl -H "Authorization: Token $NETBOX_TOKEN" \
+  -H "Content-Type: application/json" "$NETBOX_URL/api/dcim/devices/?limit=0" 2>/dev/null | jq
+}

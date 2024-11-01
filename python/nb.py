@@ -29,10 +29,14 @@ def netbox(method="GET", path="", params={}, value=None):
 def get_device(name):
     params = {"name__ic": name}
     devices = netbox(path="/api/dcim/devices/", params=params).json()
-    if devices["count"] == 0:
-        devices = netbox(
-            path="/api/virtualization/virtual-machines/", params=params
-        ).json()
+    try:
+        if devices["count"] == 0:
+            devices = netbox(
+                path="/api/virtualization/virtual-machines/", params=params
+            ).json()
+    except:
+        print(f"Error getting device: {name}")
+        print(devices)
     return devices
 
 
@@ -40,7 +44,7 @@ if __name__ == "__main__":
 
     args = sys.argv
     all_devices = []
-    if args[1] != "patch":
+    if args[1] not in ["patch"]:
         output = Parallel(n_jobs=30, verbose=0, backend="threading")(
             map(delayed(get_device), args)
         )
@@ -76,7 +80,10 @@ if __name__ == "__main__":
             else:
                 row.append(device["custom_fields"]["bmc_ip4"])
                 row.append(device["device_type"]["display"])
-                row.append(device["parent_device"]["display"])
+                try:
+                    row.append(device["parent_device"]["display"])
+                except:
+                    row.append(None)
             row.append(device["custom_fields"]["k8s_cluster"])
             devices_table.append(row)
 
