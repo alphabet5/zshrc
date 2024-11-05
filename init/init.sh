@@ -5,6 +5,7 @@ MYDIR="/Users/$(whoami)/Documents/GitHub/zshrc"
 
 setopt inc_append_history
 setopt appendhistory
+alias sed=gsed
 ssh-add
 
 eval "$(

@@ -1,0 +1,30 @@
+Horizontal {
+    width: 100%;
+}
+
+#filter-container {
+    height: 5;
+    overflow: hidden auto;
+}
+
+Input#filter-search {
+    width: 90%;
+}
+
+Button#copy-button {
+    width: 10%;
+}
+
+#results {
+    width: 100%;
+    height: auto;
+}
+
+#results-container {
+    height: 100%;
+}
+
+
+#error-container {
+    height: 10%;
+}
