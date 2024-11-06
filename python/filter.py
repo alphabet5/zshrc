@@ -1,15 +1,13 @@
-from __future__ import annotations
 from textual import work, on
 from textual.app import App, ComposeResult
 from textual.containers import VerticalScroll, Horizontal
-from textual.widgets import Input, Markdown, Button, TextArea
+from textual.widgets import TextArea
 import pathlib
 import sys
 import asyncio
 import subprocess
 import re
 from threading import Thread
-import time
 import multiprocessing
 import pyperclip
 class FilterApp(App):

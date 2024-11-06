@@ -22,8 +22,8 @@ brew uninstall gnu-sed
 - python
 ```bash
 brew install python3
-python3 -m pip install rich --break-system-packages
-python3 -m pip install jira --break-system-packages
+echo "You really shouldn't do this, but if you must:"
+python3 -m pip install rich textual jira requests pyperclip --break-system-packages
 ```
 ### coredns
 ```bash
