@@ -66,10 +66,13 @@ class FilterApp(App):
         else:
             self.custom_python = False
         if not pipe_mode:
-            if word.strip() == "":
-                cmd = f"cat {sys.argv[1]}"
+            if len(sys.argv) > 1:
+                if word.strip() == "":
+                    cmd = f"cat {sys.argv[1]}"
+                else:
+                    cmd = f"cat {sys.argv[1]} | {word}"
             else:
-                cmd = f"cat {sys.argv[1]} | {word}"
+                cmd = word
             try:
                 process = await asyncio.create_subprocess_shell(
                     cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
