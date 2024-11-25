@@ -1,5 +1,5 @@
 function nb() {
-  python3 $MYDIR/python/nb.py "$@"
+  python3.12 $MYDIR/python/nb.py "$@"
 }
 
 # function nb () {

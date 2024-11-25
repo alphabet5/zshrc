@@ -1,3 +1,3 @@
 jira() {
-  python3 $MYDIR/python/j.py "$@"
+  python3.12 $MYDIR/python/j.py "$@"
 }
