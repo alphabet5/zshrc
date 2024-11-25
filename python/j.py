@@ -14,42 +14,48 @@ if sys.argv[1][0] == "h" or sys.argv[1][0] == "?":
         """j [command] [arg]
 examples:
 jira c summary [description] - create a "needs review" jira description is optional
+jira cc project summary [description] - create a "needs review" jira with a different project
 jira ci summary [description] - create an "in progress" jira
+jira cic project summary [description] - create an "in progress" jira with a different project
 jira cd summary [description] - create a "done" jira
 jira s searchterm - search for a recent jira
 jira standup - displays previously closed tickets and current in-progress tickets for standup notes\n"""
     )
 
-try:
-    desc = sys.argv[3]
-except:
-    desc = ""
-try:
+def get_info(project=os.getenv("JIRA_PROJECT")):
+    if sys.argv[1] in ["cc", "cic"]:
+        summary = sys.argv[3]
+        if len(sys.argv) > 4:
+            desc = sys.argv[4]
+        else:
+            desc = ""
+    else:
+        summary = sys.argv[2]
+        if len(sys.argv) > 3:
+            desc = sys.argv[3]
+        else:
+            desc = ""
     f = {
-        "project": {"key": os.getenv("JIRA_PROJECT")},
-        "summary": sys.argv[2],
+        "project": {"key": project},
+        "summary": summary,
         "description": desc,
         "issuetype": {"name": "Task"},
         "customfield_10022": 0.5,
     }
-except:
-    pass
-# create, default, needs review
-if sys.argv[1] == "c":
-    result = jira.create_issue(fields=f)
-    print(result.key)
-# ci for create, in-progress
-if sys.argv[1] == "ci":
-    result = jira.create_issue(fields=f)
-    print(result.key)
-    jira.transition_issue(result, transition="In progress")
+    return f
 
-# create, done
-if sys.argv[1] == "cd":
+
+if sys.argv[1] in ["c", "cc", "cic", "ci", "cd"]:
+    if sys.argv[1] in ["cc", "cic"]:
+        f = get_info(sys.argv[2].upper())
+    else:
+        f = get_info()
     result = jira.create_issue(fields=f)
     print(result.key)
-    jira.transition_issue(result, transition="In progress")
-    jira.transition_issue(result, transition="For Review")
+    if sys.argv[1] in ["ci", "cic", "cd"]:
+        jira.transition_issue(result, transition="In progress")
+    if sys.argv[1] in ["cd"]:
+        jira.transition_issue(result, transition="Done")
 
 if sys.argv[1] == "s":
     result = jira.search_issues('created >=-5w AND summary ~ "' + sys.argv[2] + '*"')

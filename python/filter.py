@@ -9,7 +9,6 @@ import subprocess
 import re
 from threading import Thread
 import multiprocessing
-import pyperclip
 class FilterApp(App):
     CSS_PATH = f"{pathlib.Path(__file__).parent.resolve()}/filter.tcss"
 
@@ -31,15 +30,15 @@ class FilterApp(App):
         with VerticalScroll(id="results-container"):
             yield TextArea(id="results")
     
-    async def _on_key(self, event) -> None:
-        # Check if Cmd+C (or Ctrl+C) is pressed
-        if event.key == "c" and event.meta and event:  # 'meta' is used for Cmd on macOS
-            if self.query_one("#results", TextArea).selected_text.strip() != "":
-                pyperclip.copy(self.query_one("#results", TextArea).selected_text)
-            elif self.query_one("#filter-search", TextArea).selected_text.strip() != "":
-                pyperclip.copy(self.query_one("#filter-search", TextArea).selected_text)
-            elif self.query_one("#error", TextArea).selected_text.strip() != "":
-                pyperclip.copy(self.query_one("#error", TextArea).selected_text)
+    # async def _on_key(self, event) -> None:
+    #     # Check if Cmd+C (or Ctrl+C) is pressed
+    #     if event.key == "c" and event.meta and event:  # 'meta' is used for Cmd on macOS
+    #         if self.query_one("#results", TextArea).selected_text.strip() != "":
+    #             pyperclip.copy(self.query_one("#results", TextArea).selected_text)
+    #         elif self.query_one("#filter-search", TextArea).selected_text.strip() != "":
+    #             pyperclip.copy(self.query_one("#filter-search", TextArea).selected_text)
+    #         elif self.query_one("#error", TextArea).selected_text.strip() != "":
+    #             pyperclip.copy(self.query_one("#error", TextArea).selected_text)
 
     @on(TextArea.Changed)  
     async def changed(self, message: TextArea.Changed) -> None:
