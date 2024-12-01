@@ -1,6 +1,9 @@
 seal(){
 echo -n $1 | kubeseal --scope=$KUBESEAL_SCOPE --raw --from-file=/dev/stdin --cert=$KUBESEAL_CERT
 }
+sealnc() {
+  echo -n $1 | kubeseal --scope=$KUBESEAL_SCOPE --raw --from-file=/dev/stdin --controller-name=sealed-secrets-controller --controller-namespace=sealed-secrets
+}
 kgp() {
   if [ $2 ]; then
     a=$(kubectl get pods -o json -A | jq -r '.items[] | select(.metadata.namespace | test(".*'$1'.*")) | select((.metadata.name | test(".*'$2'.*")) or (.metadata.labels[] | test(".*'$2'.*"))) | "\(.metadata.namespace) \(.metadata.name)"')
