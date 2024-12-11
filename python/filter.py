@@ -1,4 +1,4 @@
-from textual import work, on
+from textual import work, on, events
 from textual.app import App, ComposeResult
 from textual.containers import VerticalScroll, Horizontal
 from textual.widgets import TextArea
@@ -9,6 +9,19 @@ import subprocess
 import re
 from threading import Thread
 import multiprocessing
+
+
+class ExtendedTextArea(TextArea):
+    """A subclas of TextArea with key hooks for copying to the clipboard"""
+
+    def on_key(self, event: events.Key) -> None:
+        """Handle key press events."""
+        if event.key == "c":
+            selected = TextArea.selected_text.fget(self)
+            if len(selected) > 0:
+                self.app.copy_to_clipboard(selected)
+
+
 class FilterApp(App):
     CSS_PATH = f"{pathlib.Path(__file__).parent.resolve()}/filter.tcss"
 
@@ -24,34 +37,21 @@ class FilterApp(App):
 
     def compose(self) -> ComposeResult:
         # with VerticalScroll(id="filter-container"):
-        yield TextArea(id="filter-search")
+        yield ExtendedTextArea().code_editor(id="filter-search", language="bash")
         # yield Button("Copy", id="copy-button")
-        yield TextArea(id="error")
+        yield ExtendedTextArea().code_editor(
+            id="error", language="bash", read_only=True
+        )
         with VerticalScroll(id="results-container"):
-            yield TextArea(id="results")
-    
-    # async def _on_key(self, event) -> None:
-    #     # Check if Cmd+C (or Ctrl+C) is pressed
-    #     if event.key == "c" and event.meta and event:  # 'meta' is used for Cmd on macOS
-    #         if self.query_one("#results", TextArea).selected_text.strip() != "":
-    #             pyperclip.copy(self.query_one("#results", TextArea).selected_text)
-    #         elif self.query_one("#filter-search", TextArea).selected_text.strip() != "":
-    #             pyperclip.copy(self.query_one("#filter-search", TextArea).selected_text)
-    #         elif self.query_one("#error", TextArea).selected_text.strip() != "":
-    #             pyperclip.copy(self.query_one("#error", TextArea).selected_text)
+            yield ExtendedTextArea().code_editor(
+                id="results", language="json", read_only=True
+            )
 
-    @on(TextArea.Changed)  
+    @on(TextArea.Changed)
     async def changed(self, message: TextArea.Changed) -> None:
         """A coroutine to handle a text changed message."""
         if message.text_area.id == "filter-search":
             self.update_filter()
-
-    # async def on_button_pressed(self, message: Button.Pressed) -> None:
-    #     """Handle button press events."""
-    #     if message.button.id == "copy-button":
-    #         input_widget = self.query_one("#filter-search", Input)
-    #         pyperclip.copy(input_widget.value)
-    #         self.query_one("#copy-button", Button).label = "Copied to clipboard!"
 
     @work(exclusive=True)
     async def update_filter(self) -> None:
@@ -97,12 +97,19 @@ class FilterApp(App):
             except Exception as e:
                 self.query_one("#error", TextArea).text = f"Exception: {str(e)}"
         else:
-            self.query_one("#error", TextArea).text = "\n".join(proc_stderr.split("\n")[:1000])
+            self.query_one("#error", TextArea).text = "\n".join(
+                proc_stderr.split("\n")[:1000]
+            )
             if word.strip() == "":
-                self.query_one("#results", TextArea).text = "\n".join(proc_stdout.split("\n")[:1000])
+                self.query_one("#results", TextArea).text = "\n".join(
+                    proc_stdout.split("\n")[:1000]
+                )
             else:
                 process = await asyncio.create_subprocess_shell(
-                    word, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, stdin=asyncio.subprocess.PIPE
+                    word,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    stdin=asyncio.subprocess.PIPE,
                 )
                 process.stdin.write(proc_stdout.encode("utf-8"))
                 stdout, stderr = await process.communicate()
@@ -136,10 +143,13 @@ class FilterApp(App):
 proc_stdout = ""
 proc_stderr = ""
 pipe_mode = False
+
+
 def enqueue_output(pipe, queue):
     for line in iter(pipe.readline, b""):
         if line:
             queue.put_nowait(line)
+
 
 def update_std(q, q_type):
     global proc_stdout
@@ -160,11 +170,21 @@ def update_std(q, q_type):
 if __name__ == "__main__":
     if len(sys.argv) > 2:
         pipe_mode = True
-        process = subprocess.Popen(" ".join(sys.argv[1:]), stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, text=True)
+        process = subprocess.Popen(
+            " ".join(sys.argv[1:]),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            shell=True,
+            text=True,
+        )
         stdout_queue = multiprocessing.Manager().Queue()
         stderr_queue = multiprocessing.Manager().Queue()
-        stdout_thread = Thread(target=enqueue_output, args=(process.stdout,stdout_queue))
-        stderr_thread = Thread(target=enqueue_output, args=(process.stderr,stderr_queue))
+        stdout_thread = Thread(
+            target=enqueue_output, args=(process.stdout, stdout_queue)
+        )
+        stderr_thread = Thread(
+            target=enqueue_output, args=(process.stderr, stderr_queue)
+        )
         stdout_thread.daemon = True
         stderr_thread.daemon = True
         stdout_thread.start()

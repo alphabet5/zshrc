@@ -1,5 +1,7 @@
 import requests
 import os
+import json
+import sys
 from rich.console import Console
 
 console = Console()
@@ -20,11 +22,13 @@ from joblib import Parallel, delayed
 
 
 def pprint(*args):
+    """Prints the given arguments along with the filename and line number."""
     frameinfo = getframeinfo(currentframe().f_back)
     console.print(f"{frameinfo.filename}:{frameinfo.lineno} \n", *args)
 
 
 def ghe(path, params={}, accept="application/json"):
+    """Makes a GET request to the GitHub API."""
     token = os.getenv("GITHUB_TOKEN")
     api_url = os.getenv("GITHUB_API_URL")
     headers = {
@@ -39,6 +43,7 @@ def ghe(path, params={}, accept="application/json"):
 
 
 def get_repo_jobs(repo_org):
+    """Fetches job runs for a specific repository."""
     org, repo = repo_org
     runs = ghe(
         f"repos/{org}/{repo}/actions/runs",
@@ -66,11 +71,20 @@ def get_repo_jobs(repo_org):
                                     re.match(r".*Runner name: \'(.*)\'", line).group(1),
                                     run["url"],
                                 )
-            else:
-                print("Error:", logs.status_code, repo, run["name"])
+
+                if detailed:
+                    log_contents = dict()
+                    for name in myzip.namelist():
+                        log_contents[name] = myzip.read(name).decode("utf-8")
+                    with open(logfile, "a") as f:
+                        f.write(
+                            json.dumps({"repo": repo, "run": run, "logs": log_contents})
+                            + "\n"
+                        )
 
 
-def get_repos(org, path="", accept="application/json", params={}):
+def get_repos(org, path="", accept="application/json", params=dict()):
+    """Retrieves a list of repositories for a given organization."""
     token = os.getenv("GITHUB_TOKEN")
     api_url = os.getenv("GITHUB_API_URL")
     if path == "":
@@ -82,29 +96,41 @@ def get_repos(org, path="", accept="application/json", params={}):
     }
     if api_url[-1] != "/":
         api_url += "/"
-    repos = requests.get(api_url + path, headers=headers, params=params)
-    repo_list = [r["name"] for r in repos.json()]
-    if "link" in repos.headers:
-        for link in repos.headers["link"].split(","):
+    r = requests.get(api_url + path, headers=headers, params=params, timeout=10)
+    repo_list = [r["name"] for r in r.json()]
+    if "link" in r.headers:
+        for link in r.headers["link"].split(","):
             if 'rel="last"' in link:
                 print(link)
                 last_page = int(re.match(r".*page=(\d+)", link).group(1))
                 if last_page > 1:
                     for page in range(2, last_page + 1):
                         params["page"] = page
-                        repos = requests.get(
-                            api_url + path, headers=headers, params=params
+                        r = requests.get(
+                            api_url + path, headers=headers, params=params, timeout=10
                         )
-                        repo_list = repo_list + [r["name"] for r in repos.json()]
+                        repo_list = repo_list + [r["name"] for r in r.json()]
     return repo_list
 
 
+detailed = False
+logfile = None
+print(sys.argv)
+if sys.argv[1] == "--detailed":
+    detailed = True
+    try:
+        logfile = sys.argv[2]
+    except IndexError:
+        logfile = "actions.log"
+    with open(logfile, "w") as f:
+        pass
+
 if __name__ == "__main__":
-    orgs = [o["login"] for o in ghe("organizations").json()]
-    repo_list = []
-    for org in orgs:
-        repo_list = repo_list + [(org, r) for r in get_repos(org)]
+    organizations = [o["login"] for o in ghe("organizations").json()]
+    repos = []
+    for organization in organizations:
+        repos = repos + [(organization, r) for r in get_repos(organization)]
 
     outputs = Parallel(n_jobs=20, verbose=0, backend="threading")(
-        map(delayed(get_repo_jobs), repo_list)
+        map(delayed(get_repo_jobs), repos)
     )

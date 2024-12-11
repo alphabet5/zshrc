@@ -22,6 +22,7 @@ jira s searchterm - search for a recent jira
 jira standup - displays previously closed tickets and current in-progress tickets for standup notes\n"""
     )
 
+
 def get_info(project=os.getenv("JIRA_PROJECT")):
     if sys.argv[1] in ["cc", "cic"]:
         summary = sys.argv[3]
@@ -55,10 +56,11 @@ if sys.argv[1] in ["c", "cc", "cic", "ci", "cd"]:
     if sys.argv[1] in ["ci", "cic", "cd"]:
         jira.transition_issue(result, transition="In progress")
     if sys.argv[1] in ["cd"]:
-        jira.transition_issue(result, transition="Done")
+        print(jira.transitions(result))
+        jira.transition_issue(result, transition="For Review")
 
 if sys.argv[1] == "s":
-    result = jira.search_issues('created >=-5w AND summary ~ "' + sys.argv[2] + '*"')
+    result = jira.search_issues('created >=-52w AND summary ~ "' + sys.argv[2] + '*"')
     for i in result:
         print(i.key, " - ", i.fields.created, " - ", i.fields.summary)
 

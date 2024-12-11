@@ -10,12 +10,24 @@ function nb-device() {
   -H "Content-Type: application/json" "$NETBOX_URL/api/dcim/devices/${1}/" 2>/dev/null | jq
 }
 
+function nb-device-interfaces() {
+  curl -H "Authorization: Token $NETBOX_TOKEN" \
+  -H "Content-Type: application/json" "$NETBOX_URL/api/dcim/interfaces/?device_id=${1}" 2>/dev/null | jq
+}
+
 function nb-interface() {
   curl -H "Authorization: Token $NETBOX_TOKEN" \
   -H "Content-Type: application/json" "$NETBOX_URL/api/dcim/interfaces/${1}/" 2>/dev/null | jq
 }
 
 function nb-devices() {
-  curl -H "Authorization: Token $NETBOX_TOKEN" \
-  -H "Content-Type: application/json" "$NETBOX_URL/api/dcim/devices/?limit=0" 2>/dev/null | jq
+  last=$(curl -H "Authorization: Token $NETBOX_TOKEN" \
+  -H "Content-Type: application/json" "$NETBOX_URL/api/dcim/devices/?limit=10000&status=active&role=server" 2>/dev/null | jq)
+  all=$(printf '%s\n' "$last" | jq -rc '.results[]')
+  while [ "$(printf '%s\n' "$last" | jq -r '.next')" != "null" ]; do
+    next=$(curl -H "Authorization: Token $NETBOX_TOKEN" -H "Content-Type: application/json" "$(printf '%s\n' "$last" | jq -r '.next')" 2>/dev/null | jq)
+    all=$all"\n"$(printf '%s\n' "$next" | jq -rc '.results[]')
+    last=$next
+  done
+  printf '%s\n' "$all" | jq -rc
 }

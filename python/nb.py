@@ -11,17 +11,21 @@ def netbox(method="GET", path="", params={}, value=None):
     nb_url = os.getenv("NETBOX_URL")
     nb_token = os.getenv("NETBOX_TOKEN")
     nb_headers = {"Authorization": f"Token {nb_token}", "Accept": "application/json"}
+    if "http" == path[:4]:
+        full_url = path
+    else:
+        full_url = f"{nb_url}/{path}"
     if method == "GET":
-        return requests.get(f"{nb_url}/{path}", headers=nb_headers, params=params)
+        return requests.get(full_url, headers=nb_headers, params=params)
     elif method == "PATCH":
         return requests.patch(
-            f"{nb_url}/{path}", headers=nb_headers, params=params, json=value
+            full_url, headers=nb_headers, params=params, json=value
         )
     elif method == "DELETE":
-        return requests.delete(f"{nb_url}/{path}", headers=nb_headers)
+        return requests.delete(full_url, headers=nb_headers)
     elif method == "POST":
         nb_headers["Content-Type"] = "application/json"
-        return requests.post(f"{nb_url}/{path}", headers=nb_headers, json=value)
+        return requests.post(full_url, headers=nb_headers, json=value)
     else:
         return None
 
@@ -44,7 +48,7 @@ if __name__ == "__main__":
 
     args = sys.argv
     all_devices = []
-    if args[1] not in ["patch"]:
+    if args[1] not in ["patch", "devices", "details", "detail"]:
         output = Parallel(n_jobs=30, verbose=0, backend="threading")(
             map(delayed(get_device), args)
         )
@@ -62,6 +66,7 @@ if __name__ == "__main__":
                 "MODEL",
                 "PARENT",
                 "K8S CLUSTER",
+                "STATUS",
             ]
         ]
         for device in all_devices:
@@ -85,6 +90,7 @@ if __name__ == "__main__":
                 except:
                     row.append(None)
             row.append(device["custom_fields"]["k8s_cluster"])
+            row.append(device["status"]["value"])
             devices_table.append(row)
 
         # data = sys.stdin.read()
@@ -116,3 +122,47 @@ if __name__ == "__main__":
                 print(f"{args[host]}: {result.status_code}")
             except:
                 print(f"{args[host]}: Error")
+    elif args[1] == "devices":
+        all_devices = []
+        devices = netbox(path="/api/dcim/devices/", params={"limit": 1000}).json()
+        all_devices = all_devices + devices["results"]
+        while devices["next"] is not None:
+            devices = netbox(path=devices["next"]).json()
+            all_devices = all_devices + devices["results"]
+        print(json.dumps(all_devices, indent=4))
+    elif "detail" in args[1]:
+        d = dict()
+        device = get_device(args[2])["results"][0]
+        d["name"] = device["name"]
+        d["status"] = device["status"]["value"]
+        d["role"] = device["role"]["display"]
+        d["platform"] = device["platform"]["name"]
+        d["model"] = device["device_type"]["display"]
+        d["bmc"] = device["custom_fields"]["bmc_ip4"]
+        try:
+            d["parent"] = device["parent_device"]["display"]
+        except:
+            pass
+        d["k8s_cluster"] = device["custom_fields"]["k8s_cluster"]
+        d["environment"] = device["custom_fields"]["environment"]
+        d["purpose"] = device["custom_fields"]["purpose"]
+        interfaces = netbox(
+            path="/api/dcim/interfaces/", params={"device_id": device["id"]}
+        ).json()
+        d["interfaces"] = dict()
+        for interface in interfaces["results"]:
+            if interface["name"] not in d["interfaces"]:
+                d["interfaces"][interface["name"]] = list()
+            try:
+                d["interfaces"][interface["name"]].append(f"Switch: {interface['connected_endpoints'][0]['device']['name']} {interface['connected_endpoints'][0]['name']}")
+            except:
+                pass
+        ips = netbox(
+            path="/api/ipam/ip-addresses/", params={"device_id": device["id"]}
+        ).json()
+        for ip in ips["results"]:
+            if ip["assigned_object"]["display"] not in d["interfaces"]:
+                d["interfaces"][ip["assigned_object"]["display"]] = list()
+            d["interfaces"][ip["assigned_object"]["display"]].append(f'IP: {ip["address"]}')
+        import yaml
+        print(yaml.dump(d))
