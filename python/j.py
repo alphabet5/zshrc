@@ -56,7 +56,6 @@ if sys.argv[1] in ["c", "cc", "cic", "ci", "cd"]:
     if sys.argv[1] in ["ci", "cic", "cd"]:
         jira.transition_issue(result, transition="In progress")
     if sys.argv[1] in ["cd"]:
-        print(jira.transitions(result))
         jira.transition_issue(result, transition="For Review")
 
 if sys.argv[1] == "s":
