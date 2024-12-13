@@ -17,3 +17,7 @@ function nsr() {
 function silence() {
   python3.12 $MYDIR/python/silence.py "$@"
 }
+
+function reboot-host() {
+  python3.12 $MYDIR/python/reboot-idrac.py "$@"
+}
