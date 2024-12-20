@@ -3,6 +3,8 @@ HISTFILE=~/.zsh_history
 HISTSIZE=1000000000
 MYDIR="/Users/$(whoami)/Documents/GitHub/zshrc"
 
+export PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH"
+
 setopt inc_append_history
 setopt appendhistory
 alias sed=gsed
