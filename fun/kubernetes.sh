@@ -73,6 +73,16 @@ k() {
     certs)
       ssh $2 "timeout 1 openssl s_client -connect 127.0.0.1:10257 -showcerts 2>&1 | grep -A 19 -m 1 'BEGIN CERTIFICATE' | sudo tee /var/lib/rancher/rke2/server/tls/kube-controller-manager/kube-controller-manager.crt & timeout 1 openssl s_client -connect 127.0.0.1:10259 -showcerts 2>&1 | grep -A 19 -m 1 'BEGIN CERTIFICATE' | sudo tee /var/lib/rancher/rke2/server/tls/kube-scheduler/kube-scheduler.crt &"
       ;;
+    ceph)
+      case "$2" in
+        archive)
+          kubectl rook-ceph ceph crash ls | grep -v '^ID' | awk '{print $1}' | xargs -L 1 kubectl rook-ceph ceph crash archive
+          ;;
+        *)
+          kubectl rook-ceph "$@"
+          ;;
+      esac
+      ;;
   esac
 }
 ex()

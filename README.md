@@ -25,6 +25,11 @@ brew install python3
 echo "You really shouldn't do this, but if you must:"
 python3 -m pip install rich textual jira requests pyperclip --break-system-packages
 ```
+
+```bash
+brew install mcs
+```
+
 ### coredns
 ```bash
 git clone https://github.com/coredns/coredns
