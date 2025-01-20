@@ -124,11 +124,18 @@ if __name__ == "__main__":
                 print(f"{args[host]}: Error")
     elif args[1] == "devices":
         all_devices = []
-        devices = netbox(path="/api/dcim/devices/", params={"limit": 1000}).json()
+        devices = netbox(path="/api/dcim/devices/", params={"limit": 10000}).json()
         all_devices = all_devices + devices["results"]
         while devices["next"] is not None:
             devices = netbox(path=devices["next"]).json()
             all_devices = all_devices + devices["results"]
+        virtual_machines = netbox(
+            path="/api/virtualization/virtual-machines/", params={"limit": 1000}
+        ).json()
+        all_devices = all_devices + virtual_machines["results"]
+        while virtual_machines["next"] is not None:
+            virtual_machines = netbox(path=virtual_machines["next"]).json()
+            all_devices = all_devices + virtual_machines["results"]
         print(json.dumps(all_devices, indent=4))
     elif "detail" in args[1]:
         d = dict()
