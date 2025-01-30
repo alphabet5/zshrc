@@ -19,5 +19,13 @@ function silence() {
 }
 
 function reboot-host() {
-  python3.12 $MYDIR/python/reboot-idrac.py "$@"
+  python3.12 $MYDIR/python/reboot-idrac.py reboot "$@"
+}
+
+function boot-host() {
+  python3.12 $MYDIR/python/reboot-idrac.py boot "$@"
+}
+
+function run-commands() {
+  python3.12 $MYDIR/python/run-commands.py "$@"
 }

@@ -5,6 +5,8 @@ import os
 import requests
 from joblib import Parallel, delayed
 import json
+import ipaddress
+import re
 
 
 def netbox(method="GET", path="", params={}, value=None):
@@ -83,7 +85,30 @@ if __name__ == "__main__":
                 row.append("VM")
                 row.append(None)
             else:
-                row.append(device["custom_fields"]["bmc_ip4"])
+                bmc_ok = False
+                try:
+                    bmc_ok = bool(
+                        ipaddress.ip_address(device["custom_fields"]["bmc_ip4"])
+                    )
+                    bmc_ip = device["custom_fields"]["bmc_ip4"]
+                except:
+                    # try to get bmc ip from "mgmt" interface
+                    print(f"BMC ip not found in custom fields for {device['name']}, trying to get from netbox.")
+                    bmc_ip = None
+                    try:
+                        ips = netbox(path=f"/api/ipam/ip-addresses/", params={"device_id": device["id"]}).json()
+                        for ip in ips["results"]:
+                            if ip["assigned_object"]["display"].lower() == "mgmt":
+                                bmc_ok = True
+                                remove_netmask = re.match(r"(.*)/.*", ip["address"]).group(1)
+                                bmc_ok = bool(ipaddress.ip_address(remove_netmask))
+                                bmc_ip = remove_netmask
+                                break
+                    except:
+                        import traceback
+                        print(traceback.format_exc())
+                        pass
+                row.append(bmc_ip)
                 row.append(device["device_type"]["display"])
                 try:
                     row.append(device["parent_device"]["display"])
