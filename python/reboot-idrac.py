@@ -16,7 +16,7 @@ if __name__ == "__main__":
     device = requests.get(
         f"{nb_url}/api/dcim/devices/",
         headers=nb_headers,
-        params={"name__ic": sys.argv[1]},
+        params={"name__ic": sys.argv[2]},
     ).json()
     if device["count"] != 1:
         for d in device["results"]:
@@ -49,28 +49,30 @@ if __name__ == "__main__":
         )
         sys.exit(1)
     else:
-        if input(f"Reboot {device['name']}? (y/n) ") == "y":
-            print(f"BMC IP: {bmc_ip}")
-            idrac_auth = (os.getenv("IDRAC_USER"), os.getenv("IDRAC_PASSWORD"))
-            # Force Off
-            print("Forcing Off")
-            r = requests.post(
-                f"https://{bmc_ip}/redfish/v1/Systems/System.Embedded.1/Actions/ComputerSystem.Reset",
-                json={"ResetType": "ForceOff"},
-                verify=False,
-                auth=idrac_auth,
-            )
-            print(r.status_code)
-            print(r.text)
-            print("Waiting 10 seconds...")
-            sleep(10)
-            # Force On
-            print("Powering Up")
+        idrac_auth = (os.getenv("IDRAC_USER"), os.getenv("IDRAC_PASSWORD"))
+        if sys.argv[1] == "reboot":
+            if input(f"Reboot {device['name']}? (y/n) ") == "y":
+                print(f"BMC IP: {bmc_ip}")
+                # Force Off
+                print("Forcing Off")
+                r = requests.post(
+                    f"https://{bmc_ip}/redfish/v1/Systems/System.Embedded.1/Actions/ComputerSystem.Reset",
+                    json={"ResetType": "ForceOff"},
+                    verify=False,
+                    auth=idrac_auth,
+                )
+                print(f"{device['name']} - {r.status_code}")
+                print(f"{device['name']} - {r.text}")
+                print("Waiting 10 seconds...")
+                sleep(10)
+                # Force On
+        if sys.argv[1] in ["boot", "reboot"]:
+            print(f"{device['name']} - Powering Up")
             r = requests.post(
                 f"https://{bmc_ip}/redfish/v1/Systems/System.Embedded.1/Actions/ComputerSystem.Reset",
                 json={"ResetType": "On"},
                 verify=False,
                 auth=idrac_auth,
             )
-            print(r.status_code)
-            print(r.text)
+            print(f"{device['name']} - {r.status_code}")
+            print(f"{device['name']} - {r.text}")
