@@ -68,11 +68,14 @@ if __name__ == "__main__":
                 # Force On
         if sys.argv[1] in ["boot", "reboot"]:
             print(f"{device['name']} - Powering Up")
-            r = requests.post(
-                f"https://{bmc_ip}/redfish/v1/Systems/System.Embedded.1/Actions/ComputerSystem.Reset",
-                json={"ResetType": "On"},
-                verify=False,
-                auth=idrac_auth,
-            )
-            print(f"{device['name']} - {r.status_code}")
-            print(f"{device['name']} - {r.text}")
+            try:
+                r = requests.post(
+                    f"https://{bmc_ip}/redfish/v1/Systems/System.Embedded.1/Actions/ComputerSystem.Reset",
+                    json={"ResetType": "On"},
+                    verify=False,
+                    auth=idrac_auth,
+                )
+                print(f"{device['name']} - {r.status_code}")
+                print(f"{device['name']} - {r.text}")
+            except Exception as e:
+                print(f"{device['name']} - {e}")
