@@ -70,6 +70,9 @@ k() {
       echo "kubectl logs -f -n ${pod[1]} ${pod[2]}"
       kubectl logs -f -n ${pod[1]} ${pod[2]}
       ;;
+    c) 
+      kubectl config use-context $2
+      ;;
     certs)
       ssh $2 "timeout 1 openssl s_client -connect 127.0.0.1:10257 -showcerts 2>&1 | grep -A 19 -m 1 'BEGIN CERTIFICATE' | sudo tee /var/lib/rancher/rke2/server/tls/kube-controller-manager/kube-controller-manager.crt & timeout 1 openssl s_client -connect 127.0.0.1:10259 -showcerts 2>&1 | grep -A 19 -m 1 'BEGIN CERTIFICATE' | sudo tee /var/lib/rancher/rke2/server/tls/kube-scheduler/kube-scheduler.crt &"
       ;;
