@@ -6,9 +6,9 @@ sealnc() {
 }
 kgp() {
   if [ $2 ]; then
-    a=$(kubectl get pods -o json -A | jq -r '.items[] | select(.metadata.namespace | test(".*'$1'.*")) | select((.metadata.name | test(".*'$2'.*")) or (.metadata.labels[] | test(".*'$2'.*"))) | "\(.metadata.namespace) \(.metadata.name)"')
+    a=$(kubectl get pods -o json -A | jq -r '.items[] | select((.metadata.name | test("'$1'")) or (.metadata.labels? | select(type == "object") | to_entries | any(.value | test("'$1'")))) | select((.metadata.name | test("'$2'")) or (.metadata.labels[] | test("'$2'"))) | "\(.metadata.namespace) \(.metadata.name)"')
   else
-    a=$(kubectl get pods -o json -A | jq -r '.items[] | select((.metadata.name | test(".*'$1'.*")) or (.metadata.labels[] | test(".*'$1'.*"))) | "\(.metadata.namespace) \(.metadata.name)"')
+    a=$(kubectl get pods -o json -A | jq -r '.items[] | select((.metadata.name | test("'$1'")) or (.metadata.labels? | select(type == "object") | to_entries | any(.value | test("'$1'")))) | "\(.metadata.namespace) \(.metadata.name)"')
   fi
   echo $a | awk '{ print length($0) " " $0; }' | sort -n | cut -d " " -f 2- | grep -m 1 .
 }
