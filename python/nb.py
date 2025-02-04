@@ -67,6 +67,7 @@ if __name__ == "__main__":
                 "BMC",
                 "MODEL",
                 "PARENT",
+                "BAY",
                 "K8S CLUSTER",
                 "STATUS",
             ]
@@ -112,6 +113,10 @@ if __name__ == "__main__":
                 row.append(device["device_type"]["display"])
                 try:
                     row.append(device["parent_device"]["display"])
+                except:
+                    row.append(None)
+                try:
+                    row.append(device["parent_device"]["device_bay"]["display"])
                 except:
                     row.append(None)
             row.append(device["custom_fields"]["k8s_cluster"])
@@ -187,6 +192,12 @@ if __name__ == "__main__":
                 d["interfaces"][interface["name"]] = list()
             try:
                 d["interfaces"][interface["name"]].append(f"Switch: {interface['connected_endpoints'][0]['device']['name']} {interface['connected_endpoints'][0]['name']}")
+            except:
+                pass
+            try:
+                if "vlans" not in d["interfaces"]:
+                    d["interfaces"]["vlans"] = dict()
+                d["interfaces"]["vlans"][interface["name"]] = f"{[v["vid"] for v in interface['tagged_vlans']]}"
             except:
                 pass
         ips = netbox(
