@@ -86,6 +86,24 @@ k() {
           ;;
       esac
       ;;
+    finalize)
+      case "$2" in
+        help)
+          echo "finalize <kind> [-A] [-n <namespace>] [-l <label>]"
+          echo "This removes any finalizers from the resource with kubectl patch <kind> -n <namespace> <name> -p '{\"metadata\":{\"finalizers\":null}}'"
+          ;;
+        *)
+          resources="$(kubectl get ${@:2} -o json | jq -r '.items[] | .kind|=ascii_downcase | "\(.kind) -n \(.metadata.namespace) \(.metadata.name)"')"
+          finalizers='{"metadata":{"finalizers":null}}'
+          echo "$resources" | while IFS= read -r resource; do
+            read -A args <<< "$resource"
+            echo "kubectl patch ${args[@]} -p '$finalizers' --type=merge"
+            kubectl patch "${args[@]}" -p $finalizers --type=merge &
+          done;
+          wait
+          ;;
+        esac
+    ;;
   esac
 }
 ex()
