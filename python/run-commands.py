@@ -1,5 +1,6 @@
 import argparse
 import json
+
 # from joblib import Parallel, delayed
 import traceback
 import netmiko.exceptions
@@ -22,6 +23,8 @@ import sys
 import re
 import traceback
 import os
+import sys
+from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler(sys.stderr))
@@ -37,6 +40,7 @@ match log_level:
         logger.setLevel(logging.ERROR)
     case _:
         logger.setLevel(logging.INFO)
+
 
 def is_open(ip, port, timeout=5):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -57,6 +61,7 @@ def connect(host):
     import paramiko.ed25519key
     import os
     import re
+
     key_file = "~/.ssh/id_rsa"
     key_file_expanded = os.path.expanduser(key_file)
     key = paramiko.rsakey.RSAKey(filename=key_file_expanded)
@@ -64,7 +69,9 @@ def connect(host):
         "device_type": "linux",
         "host": host,
         "ssh_config_file": "~/.ssh/config",
-        "username": subprocess.run('whoami', stdout=subprocess.PIPE).stdout.decode('utf-8').strip(),
+        "username": subprocess.run("whoami", stdout=subprocess.PIPE)
+        .stdout.decode("utf-8")
+        .strip(),
         "use_keys": True,
         "pkey": key,
         "key_file": key_file,
@@ -98,13 +105,17 @@ def run(host, commands):
             else:
                 sleep(1)
         except netmiko.exceptions.NetMikoAuthenticationException:
-            logging.info(f"Authentication error on {host}" + '\n' + traceback.format_exc())
+            logging.info(
+                f"Authentication error on {host}" + "\n" + traceback.format_exc()
+            )
             if retries >= 0:
                 return host, "auth"
             else:
                 sleep(5)
         except:
-            logging.info("Unhandled exception on " + host + '\n' + traceback.format_exc())
+            logging.info(
+                "Unhandled exception on " + host + "\n" + traceback.format_exc()
+            )
             try:
                 conn.disconnect()
             except:
@@ -117,20 +128,28 @@ def run(host, commands):
 
 if __name__ == "__main__":
     args = sys.argv
-    logger.info(args[1:])
     hosts = list()
     commands = list()
     is_command = False
     for arg in args[1:]:
-        if arg == "--commands":
+        if arg == "--command":
             is_command = True
-        if arg != "--commands":
+        if arg != "--command":
             if not is_command:
                 hosts.append(arg)
             else:
                 commands.append(arg)
+        if arg in ["help", "--help", "?", "-h", "--h"]:
+            print("Usage\nrun-commands [host] [host] --command 'your command'")
+            sys.exit(0)
     logger.info("Hosts: " + str(hosts))
     logger.info("Commands: " + str(commands))
+    logger.info("Giving you a few seconds to cancel..")
+    try:
+        for s in tqdm(range(5)):
+            time.sleep(1)
+    except KeyboardInterrupt:
+        sys.exit(0)
     futures = list()
     ex = ThreadPoolExecutor(max_workers=80)
     for host in hosts:
@@ -139,4 +158,4 @@ if __name__ == "__main__":
 
     for future in futures:
         hostname, output = future.result()
-        print(json.dumps({'name': hostname, 'output': output}))
+        print(json.dumps({"name": hostname, "output": output}))
