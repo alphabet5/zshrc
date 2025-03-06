@@ -29,3 +29,7 @@ function boot-host() {
 function run-commands() {
   python3.12 $MYDIR/python/run-commands.py "$@"
 }
+
+function ysort() {
+  python3.12 $MYDIR/python/ysort.py "$@"
+}
