@@ -98,3 +98,26 @@ cd /bin ; sudo ln -s /var/lib/rancher/rke2/bin/ctr ctr
 ```
 
 - probably a bunch of things I haven't documented yet. ¯\_(ツ)_/¯
+
+
+
+## Example Commands
+
+### Netbox
+
+```bash
+nb devices > devices.json
+filter devices.json
+```
+
+```bash
+nb patch host1 host2 host3 '{"custom_fields": {"asdf": true}}'
+```
+
+### Kubernetes
+
+```bash
+k ex my-pod
+k exsh my-pod
+```
+

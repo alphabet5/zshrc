@@ -10,7 +10,7 @@ function nb-device() {
   -H "Content-Type: application/json" "$NETBOX_URL/api/dcim/devices/${1}/" 2>/dev/null | jq
 }
 
-function nb-device-interfaces() {
+function nb-interfaces() {
   curl -H "Authorization: Token $NETBOX_TOKEN" \
   -H "Content-Type: application/json" "$NETBOX_URL/api/dcim/interfaces/?device_id=${1}" 2>/dev/null | jq
 }
