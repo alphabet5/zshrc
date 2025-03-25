@@ -33,3 +33,11 @@ function run-commands() {
 function ysort() {
   python3.12 $MYDIR/python/ysort.py "$@"
 }
+
+function summary() {
+    python3.12 $MYDIR/python/summary-networks.py "$@"
+}
+
+function inverse() {
+    python3.12 $MYDIR/python/summary-networks.py "$@"
+}
