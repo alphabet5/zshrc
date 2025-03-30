@@ -86,6 +86,9 @@ k() {
           ;;
       esac
       ;;
+    rados)
+      kubectl rook-ceph "$@"
+      ;;
     finalize)
       case "$2" in
         help)
