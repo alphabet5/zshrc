@@ -18,12 +18,16 @@ function silence() {
   python3.12 $MYDIR/python/silence.py "$@"
 }
 
+function poweroff-host() {
+    python3.12 $MYDIR/python/reboot-bmc.py poweroff "$@"
+}
+
 function reboot-host() {
-  python3.12 $MYDIR/python/reboot-idrac.py reboot "$@"
+  python3.12 $MYDIR/python/reboot-bmc.py reboot "$@"
 }
 
 function boot-host() {
-  python3.12 $MYDIR/python/reboot-idrac.py boot "$@"
+  python3.12 $MYDIR/python/reboot-bmc.py boot "$@"
 }
 
 function run-commands() {
