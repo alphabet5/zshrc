@@ -49,18 +49,31 @@ if __name__ == "__main__":
         )
         sys.exit(1)
     else:
-        idrac_auth = (os.getenv("IDRAC_USER"), os.getenv("IDRAC_PASSWORD"))
-        if sys.argv[1] == "reboot":
-            if input(f"Reboot {device['name']}? (y/n) ") == "y":
+        bmc_auth = (os.getenv("REDFISH_USER"), os.getenv("REDFISH_PASSWORD"))
+        info = requests.get(
+                    f"https://{bmc_ip}/redfish/v1/",
+                    verify=False,
+                    auth=bmc_auth,
+                ).json()
+        if sys.argv[1] in ["reboot", "poweroff"]:
+            if input(f"Reboot {device['name']}? (Vendor {info['Vendor']} (y/n) ") == "y":
                 print(f"BMC IP: {bmc_ip}")
                 # Force Off
                 print("Forcing Off")
-                r = requests.post(
-                    f"https://{bmc_ip}/redfish/v1/Systems/System.Embedded.1/Actions/ComputerSystem.Reset",
-                    json={"ResetType": "ForceOff"},
-                    verify=False,
-                    auth=idrac_auth,
-                )
+                if info['Vendor'] == "Dell":
+                    r = requests.post(
+                        f"https://{bmc_ip}/redfish/v1/Systems/System.Embedded.1/Actions/ComputerSystem.Reset",
+                        json={"ResetType": "ForceOff"},
+                        verify=False,
+                        auth=bmc_auth,
+                    )
+                elif info['Vendor'] == "Supermicro":
+                    r = requests.post(
+                        f"https://{bmc_ip}/redfish/v1/Systems/1/Actions/ComputerSystem.Reset",
+                        json={"ResetType": "ForceOff"},
+                        verify=False,
+                        auth=bmc_auth,
+                    )
                 print(f"{device['name']} - {r.status_code}")
                 print(f"{device['name']} - {r.text}")
                 print("Waiting 10 seconds...")
@@ -69,12 +82,20 @@ if __name__ == "__main__":
         if sys.argv[1] in ["boot", "reboot"]:
             print(f"{device['name']} - Powering Up")
             try:
-                r = requests.post(
-                    f"https://{bmc_ip}/redfish/v1/Systems/System.Embedded.1/Actions/ComputerSystem.Reset",
-                    json={"ResetType": "On"},
-                    verify=False,
-                    auth=idrac_auth,
-                )
+                if info['Vendor'] == "Dell":
+                    r = requests.post(
+                        f"https://{bmc_ip}/redfish/v1/Systems/System.Embedded.1/Actions/ComputerSystem.Reset",
+                        json={"ResetType": "On"},
+                        verify=False,
+                        auth=bmc_auth,
+                    )
+                elif info['Vendor'] == "Supermicro":
+                    r = requests.post(
+                        f"https://{bmc_ip}/redfish/v1/Systems/1/Actions/ComputerSystem.Reset",
+                        json={"ResetType": "On"},
+                        verify=False,
+                        auth=bmc_auth,
+                    )
                 print(f"{device['name']} - {r.status_code}")
                 print(f"{device['name']} - {r.text}")
             except Exception as e:

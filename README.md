@@ -23,11 +23,13 @@ brew uninstall gnu-sed
 ```bash
 brew install python3
 echo "You really shouldn't do this, but if you must:"
-python3 -m pip install rich textual jira requests pyperclip --break-system-packages
+python3 -m pip install rich textual jira requests pyperclip diagrams --break-system-packages
 ```
 
 ```bash
 brew install mcs
+brew install gron
+brew install graphviz
 ```
 
 ### coredns
@@ -81,12 +83,13 @@ GEOIPUPDATE_ACCOUNT_KEY
 VPN_DNS_IP
 PD_API_KEY
 DOCKER_REGISTRY=https://docker-registry.example.local
-IDRAC_USER=
-IDRAC_PASSWORD=
+REDFISH_USER=
+REDFISH_PASSWORD=
 NETBOX_URL=
 NETBOX_TOKEN=
 KUBESEAL_CERT="/path/to/sealedsecrets.crt"
 KUBESEAL_SCOPE="cluster-wide"
+CEPH_RBD_CSI_NAMESPACE=ceph
 ```
 
 ## ksniff
@@ -110,8 +113,11 @@ nb devices > devices.json
 filter devices.json
 ```
 
+Examples:
+
 ```bash
 nb patch host1 host2 host3 '{"custom_fields": {"asdf": true}}'
+nb patch $host '{"tags": [{"id": 51}]}'
 ```
 
 ### Kubernetes
@@ -133,4 +139,10 @@ k exsh my-pod
 192.168.32.0/19
 192.168.64.0/18
 192.168.128.0/17
+```
+
+## Other Helpful Things
+
+```bash
+brew install yamlfmt
 ```

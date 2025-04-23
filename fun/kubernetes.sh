@@ -89,6 +89,32 @@ k() {
     rados)
       kubectl rook-ceph "$@"
       ;;
+    fix-rbd)
+        if echo "$2" | grep -q 'csi-vol'; then
+            if [ -z "$CEPH_RBD_CSI_NAMESPACE" ]; then
+                rbdpods=$(kubectl get pods -A -o=jsonpath='{range .items[*]}{.metadata.namespace} {.metadata.name}{"\n"}{end}' | grep ceph | grep rbd | grep -v provisioner)
+            else
+                rbdpods=$(kubectl get pods -n $CEPH_RBD_CSI_NAMESPACE -o=jsonpath='{range .items[*]}{.metadata.namespace} {.metadata.name}{"\n"}{end}' | grep ceph | grep rbd | grep -v provisioner)
+            fi
+            while IFS= read -r p; do
+                ns=$(echo $p | awk '{print $1}')
+                pod=$(echo $p | awk '{print $2}')
+                rbddevices=$(kubectl exec -n $ns $pod -c csi-rbdplugin -- rbd device list)
+                if echo "$rbddevices" | grep -q "$2"; then
+                    echo "Found a matching csi-vol."
+                    echo "$rbddevices" | grep "$2";
+                    echo "In namespace: $ns, pod: $pod"
+                    device=$(echo "$rbddevices" | grep "$2" | awk '{print $5}')
+                    echo "kubectl exec -n $ns $pod -c csi-rbdplugin -- umount $device"
+                    kubectl exec -n $ns $pod -c csi-rbdplugin -- umount $device
+                    echo "kubectl exec -n $ns $pod -c csi-rbdplugin -- rbd unmap $device"
+                    kubectl exec -n $ns $pod -c csi-rbdplugin -- rbd unmap $device
+                fi
+            done <<< "$rbdpods"
+        else
+            echo "No csi-vol specified to unmount/unmap. Exiting. (format should be: k fix-rbd csi-vol-0d5d469e-4842-4c07-a0b8-42fbaed7b4f9)"
+        fi
+      ;;
     finalize)
       case "$2" in
         help)
