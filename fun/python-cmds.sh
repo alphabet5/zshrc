@@ -30,6 +30,14 @@ function boot-host() {
   python3.12 $MYDIR/python/reboot-bmc.py boot "$@"
 }
 
+function pxe-boot() {
+    python3.12 $MYDIR/python/reboot-bmc.py pxe "$@"
+}
+
+function redfish() {
+    python3.12 $MYDIR/python/redfish.py "$@"
+}
+
 function run-commands() {
   python3.12 $MYDIR/python/run-commands.py "$@"
 }

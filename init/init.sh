@@ -9,6 +9,7 @@ setopt inc_append_history
 setopt appendhistory
 alias sed=gsed
 ssh-add
+alias docker=podman
 
 eval "$(
   cat $MYDIR/init/.env | awk '!/^\s*#/' | awk '!/^\s*$/' | while IFS='' read -r line; do

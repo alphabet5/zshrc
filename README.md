@@ -145,4 +145,5 @@ k exsh my-pod
 
 ```bash
 brew install yamlfmt
+brew install podman
 ```
