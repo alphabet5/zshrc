@@ -133,25 +133,11 @@ k() {
           ;;
         esac
     ;;
+    node)
+      kubectl run node-debug \
+        --rm -it \
+        --image=$DEBUG_IMAGE \
+        --overrides='{"apiVersion": "v1", "spec": {"nodeName": "'$2'","hostNetwork": true,"hostPID": true,"containers": [{"name": "ubuntu","image": "'$DEBUG_IMAGE'","stdin": true,"tty": true}]}}' \
+        -- bash
   esac
-}
-ex()
-{
-if [ -z "$2" ]; then
-a=($(kubectl get pods -A -o json | jq -r '[.items[] | select((.metadata.name | test(".*'$1'.*")) or (.metadata.labels[] | test(".*'$1'.*")) ) | [.metadata.namespace, .metadata.name]][0] | .[]'))
-else
-a=($(kubectl get pods -n $1 -o json | jq -r '[.items[] | select((.metadata.name | test(".*'$2'.*")) or (.metadata.labels[] | test(".*'$2'.*")) ) | [.metadata.namespace, .metadata.name]][0] | .[]'))
-fi
-echo "kubectl exec --stdin --tty -n "${pod[1]}" "${pod[2]}" -- bash"
-kubectl exec --stdin --tty -n ${pod[1]} ${pod[2]} -- bash
-}
-exsh()
-{
-if [ -z "$2" ]; then
-a=($(kubectl get pods -A -o json | jq -r '[.items[] | select((.metadata.name | test(".*'$1'.*")) or (.metadata.labels[] | test(".*'$1'.*")) ) | [.metadata.namespace, .metadata.name]][0] | .[]'))
-else
-a=($(kubectl get pods -n $1 -o json | jq -r '[.items[] | select((.metadata.name | test(".*'$2'.*")) or (.metadata.labels[] | test(".*'$2'.*")) ) | [.metadata.namespace, .metadata.name]][0] | .[]'))
-fi
-echo "kubectl exec --stdin --tty -n "${pod[1]}" "${pod[2]}" -- sh"
-kubectl exec --stdin --tty -n ${pod[1]} ${pod[2]} -- sh
 }

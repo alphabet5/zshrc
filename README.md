@@ -90,6 +90,7 @@ NETBOX_TOKEN=
 KUBESEAL_CERT="/path/to/sealedsecrets.crt"
 KUBESEAL_SCOPE="cluster-wide"
 CEPH_RBD_CSI_NAMESPACE=ceph
+DEBUG_IMAGE=alphabet5/tools
 ```
 
 ## ksniff
