@@ -34,6 +34,18 @@ function pxe-boot() {
     python3.12 $MYDIR/python/reboot-bmc.py pxe "$@"
 }
 
+function set-pxe() {
+    python3.12 $MYDIR/python/reboot-bmc.py setpxe "$@"
+}
+
+function bios-boot() {
+    python3.12 $MYDIR/python/reboot-bmc.py bios "$@"
+}
+
+function set-bios() {
+    python3.12 $MYDIR/python/reboot-bmc.py setbios "$@"
+}
+
 function redfish() {
     python3.12 $MYDIR/python/redfish.py "$@"
 }

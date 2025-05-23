@@ -55,9 +55,13 @@ if __name__ == "__main__":
             verify=False,
             auth=bmc_auth,
         ).json()
-        if sys.argv[1] in ["pxe"]:
+        if sys.argv[1] in ["pxe", "bios"]:
             confirm = input(
-                f"Set 1-time pxe boot and force a reboot for {device['name']}? (Vendor {info['Vendor']}) (y/n) "
+                f"Set 1-time boot and force a reboot for {device['name']}? (Vendor {info['Vendor']}) (y/n) "
+            )
+        elif sys.argv[1] in ["setpxe", "setbios"]:
+            confirm = input(
+                f"Set 1-time boot for {device['name']}? (Vendor {info['Vendor']}) (y/n) "
             )
         elif sys.argv[1] in ["reboot", "poweroff"]:
             confirm = input(f"Reboot {device['name']}? (Vendor {info['Vendor']} (y/n) ")
@@ -66,13 +70,17 @@ if __name__ == "__main__":
         else:
             confirm = "n"
         if confirm == "y":
-            if sys.argv[1] in ["pxe"]:
-                print("Setting 1-time pxe boot.")
+            if sys.argv[1] in ["pxe", "setpxe", "bios", "setbios"]:
+                if sys.argv[1] in ["pxe", "setpxe"]:
+                    mode = "Pxe"
+                else:
+                    mode = "BiosSetup"
+                print(f"Setting 1-time boot: {mode}")
                 js = {
                     "Boot": {
                         "BootSourceOverrideEnabled": "Once",
                         "BootSourceOverrideMode": "UEFI",
-                        "BootSourceOverrideTarget": "Pxe",
+                        "BootSourceOverrideTarget": mode,
                     }
                 }
                 r = requests.patch(
@@ -83,7 +91,7 @@ if __name__ == "__main__":
                 )
                 print(f"{device['name']} - {r.status_code}")
                 print(f"{device['name']} - {r.text}")
-            if sys.argv[1] in ["reboot", "poweroff", "pxe"]:
+            if sys.argv[1] in ["reboot", "poweroff", "pxe", "bios"]:
                 print(f"BMC IP: {bmc_ip}")
                 # Force Off
                 print("Forcing Off")
@@ -106,7 +114,7 @@ if __name__ == "__main__":
                 print("Waiting 10 seconds...")
                 sleep(10)
                 # Force On
-            if sys.argv[1] in ["boot", "reboot", "pxe"]:
+            if sys.argv[1] in ["boot", "reboot", "pxe", "bios"]:
                 print(f"{device['name']} - Powering Up")
                 try:
                     if info["Vendor"] == "Dell":

@@ -14,6 +14,7 @@ from tqdm import tqdm
 from netmiko import ConnectHandler
 from netmiko.exceptions import NetMikoAuthenticationException, NetmikoTimeoutException
 from paramiko.ssh_exception import SSHException
+import re
 import paramiko.rsakey
 import paramiko.ed25519key
 
@@ -72,6 +73,30 @@ def connect(host):
         conn = ConnectHandler(**info)
     return conn
 
+def try_parse_json(o):
+    try:
+        if isinstance(o, str):
+            o = o.strip()
+        if o.startswith("{") or o.startswith("["):
+            # Try to parse as JSON, including multiline JSON logs
+            try:
+                return json.loads(o)
+            except json.JSONDecodeError:
+                matches = re.findall(r'({.*?}|\[.*?\])', o, re.DOTALL)
+                if matches:
+                    try:
+                        # Return the first valid JSON object found
+                        return [json.loads(a) for a in matches]
+                    except Exception:
+                        pass
+                raise
+        else:
+            return o
+    except json.JSONDecodeError:
+        return o
+    except Exception as e:
+        logging.error(f"Error parsing JSON: {e}")
+        return o
 
 def run(host, commands, timing):
     output = {}
@@ -81,11 +106,13 @@ def run(host, commands, timing):
             logging.info("Connected to " + host)
             for command in commands:
                 if timing > 0:
-                    output[command] = conn.send_command_timing(
+                    o = conn.send_command_timing(
                         command, delay_factor=timing
                     )
+                    output[command] = try_parse_json(o)
                 else:
-                    output[command] = conn.send_command(command, read_timeout=120)
+                    o = conn.send_command(command, read_timeout=120)
+                    output[command] = try_parse_json(o)
             conn.disconnect()
             return host, output
         except NetmikoTimeoutException:
@@ -93,7 +120,7 @@ def run(host, commands, timing):
             if retries >= 2:
                 return host, "timeout"
             sleep(1)
-        except NetmikoAuthenticationException:
+        except NetMikoAuthenticationException:
             logging.info(
                 f"Authentication error on {host}" + "\n" + traceback.format_exc()
             )
