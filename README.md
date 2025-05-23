@@ -121,6 +121,10 @@ nb patch host1 host2 host3 '{"custom_fields": {"asdf": true}}'
 nb patch $host '{"tags": [{"id": 51}]}'
 ```
 
+```bash
+nb $(kubectl get nodes | grep -v "NAME" | awk '{print $1}' | xargs echo)
+```
+
 ### Kubernetes
 
 ```bash
@@ -147,4 +151,18 @@ k exsh my-pod
 ```bash
 brew install yamlfmt
 brew install podman
+brew install derailed/popeye/popeye
+brew install --cask graphiql
+```
+
+
+## Other Other helpful commands
+
+
+```
+export ETCDCTL_ENDPOINTS='https://127.0.0.1:2379'
+export ETCDCTL_CACERT='/var/lib/rancher/rke2/server/tls/etcd/server-ca.crt'
+export ETCDCTL_CERT='/var/lib/rancher/rke2/server/tls/etcd/server-client.crt'
+export ETCDCTL_KEY='/var/lib/rancher/rke2/server/tls/etcd/server-client.key'
+export ETCDCTL_API=3
 ```
