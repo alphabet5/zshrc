@@ -98,7 +98,7 @@ def try_parse_json(o):
         logging.error(f"Error parsing JSON: {e}")
         return o
 
-def run(host, commands, timing):
+def run(host, commands, timing, scripts):
     output = {}
     for retries in range(100):
         try:
@@ -107,12 +107,32 @@ def run(host, commands, timing):
             for command in commands:
                 if timing > 0:
                     o = conn.send_command_timing(
-                        command, delay_factor=timing
+                        command,
+                        read_timeout=0,
+                        last_read=timing
                     )
-                    output[command] = try_parse_json(o)
                 else:
                     o = conn.send_command(command, read_timeout=120)
-                    output[command] = try_parse_json(o)
+                output[command] = try_parse_json(o)
+                logger.info(try_parse_json(o))
+            for script_file, script in scripts.items():
+                if timing > 0:
+                    o = conn.send_command_timing(
+                        "sudo bash <<'EOF'\n" + script + "\nEOF\n\n",
+                        strip_command=False,
+                        strip_prompt=False,
+                        read_timeout=0,
+                        last_read=timing
+                    )
+                else:
+                    o = conn.send_command(
+                        "sudo bash <<'EOF'\n" + script + "\nEOF\n\n",
+                        read_timeout=120,
+                        strip_command=False,
+                        strip_prompt=False
+                    )
+                output[script] = try_parse_json(o)
+                logger.info(try_parse_json(o))
             conn.disconnect()
             return host, output
         except NetmikoTimeoutException:
@@ -157,13 +177,22 @@ if __name__ == "__main__":
 
     # Define optional arguments
     parser.add_argument(
-        "--command", nargs="+", help="Commands to run on the specified hosts."
+        "--command",
+        action="append",
+        default=[],
+        help="Commands to run on the specified hosts."
+    )
+    parser.add_argument(
+        "--script",
+        action="append",
+        default=[],
+        help="Optional, path to a script file containing commands to run on the hosts. (will first check zshrc/scripts directory, then current directory)",
     )
     parser.add_argument(
         "--timing",
         type=int,
         default=0,
-        help="Optional, set the delay_factor, and run commands with send_command_timing.",
+        help="Optional, use send_command_timing, and read until there is no new output for {timing} seconds. Default is 0, which uses send_command.",
     )
 
     # Parse arguments
@@ -171,11 +200,24 @@ if __name__ == "__main__":
 
     # Extract parsed values
     hosts = args.hosts
-    commands = args.command if args.command else []
+    commands = args.command
+    scripts = {}
+    my_dir = os.path.dirname(os.path.abspath(__file__))
+    scripts_dir = os.path.join(os.path.dirname(my_dir), 'scripts')
+    cwd = os.getcwd()
+    for s in args.script:
+        if os.path.exists(os.path.join(scripts_dir, s)):
+            scripts[os.path.join(scripts_dir, s)] = open(os.path.join(scripts_dir, s)).read()
+        elif os.path.exists(os.path.join(cwd, s)):
+            scripts['os.path.join(cwd, s)'] = open(os.path.join(cwd, s)).read()
+        else:
+            logger.error(f"Script {s} not found in scripts directory or current directory.")
+            sys.exit(1)
     timing = args.timing
     timing_mode = timing > 0
     logger.info("Hosts: " + str(hosts))
     logger.info("Commands: " + str(commands))
+    logger.info("Scripts: " + str([s for s in scripts.keys()]))
     logger.info(f"Timing Mode: {timing_mode}")
     logger.info("Giving you a few seconds to cancel..")
     try:
@@ -187,7 +229,7 @@ if __name__ == "__main__":
     ex = ThreadPoolExecutor(max_workers=80)
     for host in hosts:
         # host_list.append({"hostname": host})
-        futures.append(ex.submit(run, host=host, commands=commands, timing=timing))
+        futures.append(ex.submit(run, host=host, commands=commands, timing=timing, scripts=scripts))
 
     for future in futures:
         hostname, output = future.result()
