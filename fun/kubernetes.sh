@@ -19,6 +19,15 @@ kgpa() {
     echo $(kubectl get pods -o json -A | jq -r '.items[] | select((.metadata.name | test(".*'$1'.*")) or (.metadata.labels[] | test(".*'$1'.*"))) | "\(.metadata.namespace) \(.metadata.name)"')
   fi
 }
+# exclude terminating pods (any that have metadata.deletionTimestamp set)
+kgpnt() {
+  if [ $2 ]; then
+    a=$(kubectl get pods -o json -A | jq -r '.items[] | select(.metadata.deletionTimestamp | not) |select((.metadata.name | test("'$1'")) or (.metadata.labels? | select(type == "object") | to_entries | any(.value | test("'$1'")))) | select((.metadata.name | test("'$2'")) or (.metadata.labels[] | test("'$2'"))) | "\(.metadata.namespace) \(.metadata.name)"')
+  else
+    a=$(kubectl get pods -o json -A | jq -r '.items[] | select(.metadata.deletionTimestamp | not) | select((.metadata.name | test("'$1'")) or (.metadata.labels? | select(type == "object") | to_entries | any(.value | test("'$1'")))) | "\(.metadata.namespace) \(.metadata.name)"')
+  fi
+  echo $a | awk '{ print length($0) " " $0; }' | sort -n | cut -d " " -f 2- | grep -m 1 .
+}
 logspods() {
   if [ $2 ]; then
     a=$(kubectl get pods -o json -A | jq -r '.items[] | select(.metadata.namespace | test(".*'$1'.*")) | select((.metadata.name | test(".*'$2'.*")) or (.metadata.labels[] | test(".*'$2'.*"))) | .metadata.labels | add')
@@ -30,17 +39,19 @@ logspods() {
 k() {
   if [ $3 ]; then
     pod=($(kgp $2 $3))
+    podnt=($(kgpnt $2 $3))
   else
     pod=($(kgp $2))
+    podnt=($(kgpnt $2))
   fi
   case "$1" in
     ex)
-      echo "kubectl exec --stdin --tty -n "${pod[1]}" "${pod[2]}" -- bash"
-      kubectl exec --stdin --tty -n ${pod[1]} ${pod[2]} -- bash
+      echo "kubectl exec --stdin --tty -n "${podnt[1]}" "${podnt[2]}" -- bash"
+      kubectl exec --stdin --tty -n ${podnt[1]} ${podnt[2]} -- bash
       ;;
     exsh)
-      echo "kubectl exec --stdin --tty -n "${pod[1]}" "${pod[2]}" -- sh"
-      kubectl exec --stdin --tty -n ${pod[1]} ${pod[2]} -- sh
+      echo "kubectl exec --stdin --tty -n "${podnt[1]}" "${podnt[2]}" -- sh"
+      kubectl exec --stdin --tty -n ${podnt[1]} ${podnt[2]} -- sh
       ;;
     sniff)
       if [ $5 ]; then
