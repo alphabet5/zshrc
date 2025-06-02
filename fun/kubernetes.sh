@@ -28,22 +28,19 @@ kgpnt() {
   fi
   echo $a | awk '{ print length($0) " " $0; }' | sort -n | cut -d " " -f 2- | grep -m 1 .
 }
-logspods() {
-  if [ $2 ]; then
-    a=$(kubectl get pods -o json -A | jq -r '.items[] | select(.metadata.namespace | test(".*'$1'.*")) | select((.metadata.name | test(".*'$2'.*")) or (.metadata.labels[] | test(".*'$2'.*"))) | .metadata.labels | add')
-  else
-    a=$(kubectl get pods -o json -A | jq -r '.items[] | select((.metadata.name | test(".*'$1'.*")) or (.metadata.labels[] | test(".*'$1'.*"))) | .metadata.labels | add')
-  fi
-  echo $a | awk '{ print length($0) " " $0; }' $file | sort -n | cut -d " " -f 2- | grep -m 1 .
-}
+
 k() {
-  if [ $3 ]; then
-    pod=($(kgp $2 $3))
-    podnt=($(kgpnt $2 $3))
-  else
-    pod=($(kgp $2))
-    podnt=($(kgpnt $2))
-  fi
+  case "$1" in
+    ex|exsh|sniff|nsenter|l|)
+      if [ $3 ]; then
+        pod=($(kgp $2 $3))
+        podnt=($(kgpnt $2 $3))
+      else
+        pod=($(kgp $2))
+        podnt=($(kgpnt $2))
+      fi
+    ;;
+  esac
   case "$1" in
     ex)
       echo "kubectl exec --stdin --tty -n "${podnt[1]}" "${podnt[2]}" -- bash"
@@ -150,5 +147,22 @@ k() {
         --image=$DEBUG_IMAGE \
         --overrides='{"apiVersion": "v1", "spec": {"nodeName": "'$2'","hostNetwork": true,"hostPID": true,"containers": [{"name": "ubuntu","image": "'$DEBUG_IMAGE'","stdin": true,"tty": true}]}}' \
         -- bash
+    ;;
+    config)
+        case "$2" in
+          merge)
+            shift 2
+            yq eval-all '. as $item ireduce ({};
+                    .clusters += $item.clusters |
+                    .users += $item.users |
+                    .contexts += $item.contexts |
+                    .clusters |= unique_by(.name) |
+                    .users |= unique_by(.name) |
+                    .contexts |= unique_by(.name) |
+                    .current-context = $item."current-context"
+                )' "$@"
+          ;;
+        esac
+    ;;
   esac
 }
