@@ -31,6 +31,17 @@ if [[ "$DRY_RUN" == true ]]; then
 else
     # Remove LVM volumes
     echo "Removing LVM volumes:"
+    sudo pvs -o pv_name,vg_name --separator '|' --noheadings | \
+    while IFS='|' read -r pv vg; do
+        if echo "$vg" | grep -q "ceph"; then
+            echo "Matched Ceph VG: $vg on PV: $pv"
+            for lv in $(sudo lvs -o lv_name --noheadings $vg); do
+                sudo lvremove -y $vg/$lv
+            done
+            sudo vgremove -y $vg
+            sudo pvremove -y $pv
+        fi
+    done
     ls /dev/mapper/ceph-* | xargs -I% -- sudo dmsetup remove %
     sudo rm -rf /dev/ceph-*
     sudo rm -rf /dev/mapper/ceph--*
@@ -121,7 +132,9 @@ for disk in $DISKS; do
   else
     echo "Wiping disk $disk"
     # Zap the disk to a fresh, usable state (zap-all is important, b/c MBR has to be clean)
-    sgdisk --zap-all $disk
+    sudo sgdisk --zap-all $disk
+    # Inform the OS of partition table changes
+    sudo partprobe $disk
     # SSDs may be better cleaned with blkdiscard instead of dd
     blkdiscard_status=0
     devname=$(basename "$(readlink -f "$disk")")
@@ -135,14 +148,11 @@ for disk in $DISKS; do
             # If blkdiscard failed or is not available, use dd to zero out the disk
             echo "blkdiscard not supported on $disk, skipping, using dd instead"
             # Wipe portions of the disk to remove more LVM metadata that may be present
-            dd if=/dev/zero of="$disk" bs=1K count=200 oflag=direct,dsync seek=0 # Clear at offset 0
-            dd if=/dev/zero of="$disk" bs=1K count=200 oflag=direct,dsync seek=$((1 * 1024**2)) # Clear at offset 1GB
-            dd if=/dev/zero of="$disk" bs=1K count=200 oflag=direct,dsync seek=$((10 * 1024**2)) # Clear at offset 10GB
-            dd if=/dev/zero of="$disk" bs=1K count=200 oflag=direct,dsync seek=$((100 * 1024**2)) # Clear at offset 100GB
-            dd if=/dev/zero of="$disk" bs=1K count=200 oflag=direct,dsync seek=$((1000 * 1024**2)) # Clear at offset 1000GB
+            sudo dd if=/dev/zero of="$disk" bs=1K count=200 oflag=direct,dsync seek=0 # Clear at offset 0
+            sudo dd if=/dev/zero of="$disk" bs=1K count=200 oflag=direct,dsync seek=$((1 * 1024**2)) # Clear at offset 1GB
+            sudo dd if=/dev/zero of="$disk" bs=1K count=200 oflag=direct,dsync seek=$((10 * 1024**2)) # Clear at offset 10GB
+            sudo dd if=/dev/zero of="$disk" bs=1K count=200 oflag=direct,dsync seek=$((100 * 1024**2)) # Clear at offset 100GB
         fi
     fi
-    # Inform the OS of partition table changes
-    partprobe $disk
   fi
 done

@@ -31,7 +31,7 @@ kgpnt() {
 
 k() {
   case "$1" in
-    ex|exsh|sniff|nsenter|l|)
+    ex|exsh|sniff|nsenter|l|delete|)
       if [ $3 ]; then
         pod=($(kgp $2 $3))
         podnt=($(kgpnt $2 $3))
@@ -58,6 +58,14 @@ k() {
         echo "kubectl sniff -p --socket /run/k3s/containerd/containerd.sock -n "${pod[1]}" "${pod[2]}""
         kubectl sniff -p --socket /run/k3s/containerd/containerd.sock -n ${pod[1]} ${pod[2]}
       fi
+      ;;
+    delete)
+        if [ -n "${podnt[1]}" ] && [ -n "${podnt[2]}" ]; then
+            echo "kubectl delete pod -n "${podnt[1]}" "${podnt[2]}"";
+            kubectl delete pod -n "${podnt[1]}" "${podnt[2]}"
+        else
+            echo "Pod namespace or name not found."
+        fi
       ;;
     nsenter)
       echo "kubectl get pod -n "${pod[1]}" "${pod[2]}" -o yaml | yq '.status.containerStatuses[0].containerID' | sed -r 's/containerd:\/\/(.*)/\1/g'"
@@ -141,6 +149,9 @@ k() {
           ;;
         esac
     ;;
+    evicted)
+      kubectl get pods -A | grep Evicted | awk '{print $1 " " $2}' | xargs -L 1 bash -c 'kubectl delete pods -n $0 $1'
+      ;;
     node)
       kubectl run node-debug \
         --rm -it \
