@@ -23,7 +23,7 @@ brew uninstall gnu-sed
 ```bash
 brew install python3
 echo "You really shouldn't do this, but if you must:"
-python3 -m pip install rich textual jira requests pyperclip diagrams --break-system-packages
+python3 -m pip install rich textual jira requests pyperclip diagrams pandas --break-system-packages
 ```
 
 ```bash

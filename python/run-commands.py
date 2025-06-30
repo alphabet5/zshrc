@@ -98,66 +98,95 @@ def try_parse_json(o):
         logging.error(f"Error parsing JSON: {e}")
         return o
 
-def run(host, commands, timing, scripts):
+def run(var, commands, timing, scripts, local):
     output = {}
-    for retries in range(100):
-        try:
-            conn = connect(host)
-            logging.info("Connected to " + host)
-            for command in commands:
-                if timing > 0:
-                    o = conn.send_command_timing(
-                        command,
-                        read_timeout=0,
-                        last_read=timing
-                    )
-                else:
-                    o = conn.send_command(command, read_timeout=120)
-                output[command] = try_parse_json(o)
-                logger.info(try_parse_json(o))
-            for script_file, script in scripts.items():
-                if timing > 0:
-                    o = conn.send_command_timing(
-                        "sudo bash <<'EOF'\n" + script + "\nEOF\n\n",
-                        strip_command=False,
-                        strip_prompt=False,
-                        read_timeout=0,
-                        last_read=timing
-                    )
-                else:
-                    o = conn.send_command(
-                        "sudo bash <<'EOF'\n" + script + "\nEOF\n\n",
-                        read_timeout=120,
-                        strip_command=False,
-                        strip_prompt=False
-                    )
-                output[script] = try_parse_json(o)
-                logger.info(try_parse_json(o))
-            conn.disconnect()
-            return host, output
-        except NetmikoTimeoutException:
-            logging.info(f"Timeout on {host}")
-            if retries >= 2:
-                return host, "timeout"
-            sleep(1)
-        except NetMikoAuthenticationException:
-            logging.info(
-                f"Authentication error on {host}" + "\n" + traceback.format_exc()
-            )
-            if retries >= 0:
-                return host, "auth"
-            sleep(5)
-        except:
-            logging.info(
-                "Unhandled exception on " + host + "\n" + traceback.format_exc()
-            )
+    errors = {}
+    simple = ""
+    if local:
+        for command in commands:
+            c = command.replace("$VAR", var)
+            if timing > 0:
+                out = subprocess.run(
+                    c,
+                    shell=True,
+                    capture_output=True,
+                    text=True,
+                    timeout=timing
+                ).stdout
+            else:
+                out = subprocess.run(
+                    c,
+                    shell=True,
+                    capture_output=True,
+                    text=True
+                )
+            output[c] = try_parse_json(out.stdout)
+            errors[c] = out.stderr
+            simple=output[c]
+        return var, output, errors, simple
+    else:
+        for retries in range(100):
             try:
+                conn = connect(var)
+                logging.info("Connected to " + var)
+                for command in commands:
+                    if timing > 0:
+                        o = conn.send_command_timing(
+                            command,
+                            read_timeout=0,
+                            last_read=timing
+                        )
+                    else:
+                        o = conn.send_command(command, read_timeout=120)
+                    output[command] = try_parse_json(o)
+                    simple = output[command]
+                    logger.info(try_parse_json(o))
+                for script_file, script in scripts.items():
+                    if timing > 0:
+                        o = conn.send_command_timing(
+                            "sudo bash <<'EOF'\n" + script + "\nEOF\n\n",
+                            strip_command=False,
+                            strip_prompt=False,
+                            read_timeout=0,
+                            last_read=timing
+                        )
+                    else:
+                        o = conn.send_command(
+                            "sudo bash <<'EOF'\n" + script + "\nEOF\n\n",
+                            read_timeout=120,
+                            strip_command=False,
+                            strip_prompt=False
+                        )
+                    output[script] = try_parse_json(o)
+                    simple = output[script]
+                    logger.info(try_parse_json(o))
                 conn.disconnect()
+                return var, output, errors, simple
+            except NetmikoTimeoutException:
+                logging.info(f"Timeout on {var}")
+                if retries >= 2:
+                    errors["timeout"] = "Timeout after 3 retries"
+                    return var, output, errors, simple
+                sleep(1)
+            except NetMikoAuthenticationException:
+                logging.info(
+                    f"Authentication error on {var}" + "\n" + traceback.format_exc()
+                )
+                if retries >= 0:
+                    errors["authentication"] = "Authentication error."
+                    return var, output, errors, simple
+                sleep(5)
             except:
-                pass
-            if retries >= 0:
-                return host, traceback.format_exc()
-            sleep(5)
+                logging.info(
+                    "Unhandled exception on " + var + "\n" + traceback.format_exc()
+                )
+                try:
+                    conn.disconnect()
+                except:
+                    pass
+                if retries >= 0:
+                    return var, output, {"traceback": traceback.format_exc()}, 'unknown error'
+                sleep(5)
 
 
 if __name__ == "__main__":
@@ -167,12 +196,12 @@ if __name__ == "__main__":
 
     # Create argument parser
     parser = argparse.ArgumentParser(
-        description="Run commands on multiple hosts with optional timing delay."
+        description="Run commands in parallel - locally or on a list of hosts."
     )
 
     # Define positional arguments
     parser.add_argument(
-        "hosts", nargs="*", help="List of hostnames or IP addresses to connect to."
+        "vars", nargs="*", help="List of hostnames, IP addresses, or VARs to loop through."
     )
 
     # Define optional arguments
@@ -180,7 +209,7 @@ if __name__ == "__main__":
         "--command",
         action="append",
         default=[],
-        help="Commands to run on the specified hosts."
+        help="Commands to run."
     )
     parser.add_argument(
         "--script",
@@ -194,12 +223,17 @@ if __name__ == "__main__":
         default=0,
         help="Optional, use send_command_timing, and read until there is no new output for {timing} seconds. Default is 0, which uses send_command.",
     )
+    parser.add_argument(
+        "--local",
+        action="store_true",
+        help="Run commands locally instead of on remote hosts. Commands ran will replace $VAR with the value of the list of inputs."
+    )
 
     # Parse arguments
     args = parser.parse_args()
 
     # Extract parsed values
-    hosts = args.hosts
+    vars = args.vars
     commands = args.command
     scripts = {}
     my_dir = os.path.dirname(os.path.abspath(__file__))
@@ -215,7 +249,7 @@ if __name__ == "__main__":
             sys.exit(1)
     timing = args.timing
     timing_mode = timing > 0
-    logger.info("Hosts: " + str(hosts))
+    logger.info("Hosts: " + str(vars))
     logger.info("Commands: " + str(commands))
     logger.info("Scripts: " + str([s for s in scripts.keys()]))
     logger.info(f"Timing Mode: {timing_mode}")
@@ -227,10 +261,10 @@ if __name__ == "__main__":
         sys.exit(0)
     futures = []
     ex = ThreadPoolExecutor(max_workers=80)
-    for host in hosts:
+    for var in vars:
         # host_list.append({"hostname": host})
-        futures.append(ex.submit(run, host=host, commands=commands, timing=timing, scripts=scripts))
+        futures.append(ex.submit(run, var=var, commands=commands, timing=timing, scripts=scripts, local=args.local))
 
     for future in futures:
-        hostname, output = future.result()
-        print(json.dumps({"name": hostname, "output": output}))
+        var, output, errors, simple = future.result()
+        print(json.dumps({"name": var, "simple": simple, "output": output, "errors": errors}))
