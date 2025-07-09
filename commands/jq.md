@@ -21,3 +21,10 @@ cat lldp.json | jq -r '
   | @csv
 '
 ```
+
+## Capturing regex group
+
+```bash
+run-commands host1 host2 --command '
+cat os.json | jq -r 'select(.errors == {}) | "\(.name)\t\(.simple | capture("Description:\t(?<desc>.+)") | .desc)"'
+```

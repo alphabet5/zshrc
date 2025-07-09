@@ -153,6 +153,8 @@ brew install yamlfmt
 brew install podman
 brew install derailed/popeye/popeye
 brew install --cask graphiql
+kubectl krew install neat
+brew install trivy
 ```
 
 

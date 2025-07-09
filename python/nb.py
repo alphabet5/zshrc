@@ -82,7 +82,6 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--patch",
-        action="append",
         default="",
         help="Json patch to apply to device configurations in netbox.",
     )
@@ -217,14 +216,29 @@ if __name__ == "__main__":
         for host in args.vars:
             try:
                 print(f"Patching {host} with {args.patch}")
-                device = netbox(
-                    path=f"/api/dcim/devices/", params={"name__ic": host}
-                ).json()
-                id = device["results"][0]["id"]
-                result = netbox(
-                    method="PATCH", path=f"/api/dcim/devices/{id}/", value=patch
-                )
-                print(f"{host}: {result.status_code}")
+                try:
+                    device = netbox(
+                        path=f"/api/dcim/devices/", params={"name__ic": host}
+                    ).json()
+                    id = device["results"][0]["id"]
+                    result = netbox(
+                        method="PATCH", path=f"/api/dcim/devices/{id}/", value=patch
+                    )
+                except:
+                    device = netbox(
+                        path=f"/api/virtualization/virtual-machines/",
+                        params={"name__ic": host},
+                    ).json()
+                    id = device["results"][0]["id"]
+                    result = netbox(
+                        method="PATCH",
+                        path=f"/api/virtualization/virtual-machines/{id}/",
+                        value=patch,
+                    )
+                if result.status_code == 200:
+                    print(f"{host}: {result.status_code}")
+                else:
+                    print(f"{host}: {result.status_code} - {result.text}")
             except:
                 print(f"{host}: Error")
     elif args.action == "devices":
