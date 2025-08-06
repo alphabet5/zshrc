@@ -102,6 +102,14 @@ k() {
           ;;
       esac
       ;;
+    get)
+      case "$2" in
+        cluster|clusters)
+          shift 2 # Remove "get" and "clusters" from the arguments
+          kubectl get clusters.postgresql.cnpg.io "$@"
+          ;;
+      esac
+      ;;
     rados)
       kubectl rook-ceph "$@"
       ;;

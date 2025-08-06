@@ -28,3 +28,12 @@ cat lldp.json | jq -r '
 run-commands host1 host2 --command '
 cat os.json | jq -r 'select(.errors == {}) | "\(.name)\t\(.simple | capture("Description:\t(?<desc>.+)") | .desc)"'
 ```
+
+## CSV Output
+
+```bash
+jq -r '.[] 
+  | select(.role.id == 8 and .status.value == "active") 
+  | [.name, .custom_fields.operating_system, .tenant.display, .custom_fields.purpose, .custom_fields.environment, .device_type.display] 
+  | @tsv'
+```
