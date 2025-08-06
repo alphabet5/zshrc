@@ -1,4 +1,4 @@
-#
+# Simple histogram
 
 ```bash
 grep 'SLOW PAGE' error.log | grep -E "took [0-9][0-9][0-9][0-9][0-9] ms" | cut -b1-11 | uniq -c | tail -n 20

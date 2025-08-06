@@ -14,6 +14,10 @@ function nsr() {
   python3.12 $MYDIR/python/nsr.py "$@"
 }
 
+function table() {
+    python3.12 $MYDIR/python/prettytable.py
+}
+
 function silence() {
   python3.12 $MYDIR/python/silence.py "$@"
 }

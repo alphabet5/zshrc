@@ -117,8 +117,8 @@ filter devices.json
 Examples:
 
 ```bash
-nb patch host1 host2 host3 '{"custom_fields": {"asdf": true}}'
-nb patch $host '{"tags": [{"id": 51}]}'
+nb patch host1 host2 host3 --patch '{"custom_fields": {"asdf": true}}'
+nb patch $host --patch '{"tags": [{"id": 51}]}'
 ```
 
 ```bash
