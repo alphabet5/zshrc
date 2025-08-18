@@ -62,6 +62,13 @@ def get_device(name):
         print(devices)
     return devices
 
+def get_ip(address):
+    params = {"address__ic": address}
+    ips = netbox(path="/api/ipam/ip-addresses/", params=params).json()
+    if ips["count"] == 0:
+        raise ValueError(f"No IP found for address: {address}")
+    return ips
+
 
 if __name__ == "__main__":
     # Create argument parser
@@ -71,13 +78,13 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "action",
-        help="Action to perform: get, patch, devices.",
+        help="Action to perform: get, patch, devices, ips.",
         nargs="?",
     )
 
     # Define positional arguments
     parser.add_argument(
-        "vars", nargs="*", help="Hosts to fetch."
+        "vars", nargs="*", help="Hosts or IPs to fetch."
     )
 
     parser.add_argument(
@@ -94,7 +101,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    valid_actions = ["patch", "devices", "detail", "details"]
+    valid_actions = ["patch", "devices", "detail", "details" "ip", "ips"]
     if args.action not in valid_actions:
         args.vars = [args.action] + args.vars
         args.action = "get"
@@ -256,6 +263,16 @@ if __name__ == "__main__":
             virtual_machines = netbox(path=virtual_machines["next"]).json()
             all_devices = all_devices + virtual_machines["results"]
         print(json.dumps(all_devices, indent=4))
+    elif args.action in ["ip", "ips"]:
+        all_ips = []
+        params = {"limit": 10000}
+        ips = netbox(path="/api/ipam/ip-addresses/", params=params).json()
+        all_ips = all_ips + ips["results"]
+        while ips["next"] is not None:
+            ips = netbox(path=ips["next"]).json()
+            all_ips = all_ips + ips["results"]
+        for ip in all_ips:
+            print(json.dumps(ip))
     elif args.action in ["detail", "details"]:
         for host in args.vars:
             d = dict()

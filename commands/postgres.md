@@ -2,7 +2,7 @@
 ## Reload pg_hba file
 
 ```sql
-SELECT pg_reload_conf();  
+SELECT pg_reload_conf();
 ```
 
 ```bash

@@ -11,3 +11,8 @@ grep 'SLOW PAGE' error.log | grep -E "took [0-9][0-9][0-9][0-9][0-9] ms" | cut -
       8 Jun  3 07:4
 ```
 
+## Frequency of words in documents/logfiles
+
+```bash
+head -100000 | tr -s '[:space:]' '\n' | sort | uniq -c | sort -nr
+```
