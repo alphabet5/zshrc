@@ -1,5 +1,9 @@
 seal(){
-echo -n $1 | kubeseal --scope=$KUBESEAL_SCOPE --raw --from-file=/dev/stdin --cert=$KUBESEAL_CERT
+    if [ -z "$KUBESEAL_CERT" ]; then
+        echo -n $1 | kubeseal --scope=$KUBESEAL_SCOPE --raw --from-file=/dev/stdin --controller-namespace=$KUBESEAL_NAMESPACE --controller-name=$KUBESEAL_CONTROLLER_NAME
+    else
+        echo -n $1 | kubeseal --scope=$KUBESEAL_SCOPE --raw --from-file=/dev/stdin --cert=$KUBESEAL_CERT
+    fi
 }
 sealnc() {
   echo -n $1 | kubeseal --scope=$KUBESEAL_SCOPE --raw --from-file=/dev/stdin --controller-name=sealed-secrets-controller --controller-namespace=sealed-secrets
