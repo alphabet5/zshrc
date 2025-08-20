@@ -146,6 +146,7 @@ if __name__ == "__main__":
                 row.append(None) # bay
                 row.append(None) # switch
                 row.append(None) # interface
+                row.append(None) # k8s cluster
             else:
                 bmc_ok = False
                 try:
