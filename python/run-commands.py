@@ -48,7 +48,7 @@ def is_open(ip, port, timeout=5):
 
 
 def connect(host):
-    key_file = "~/.ssh/id_rsa"
+    key_file = os.getenv("SSH_KEY_FILE", "~/.ssh/id_rsa")
     key_file_expanded = os.path.expanduser(key_file)
     key = paramiko.rsakey.RSAKey(filename=key_file_expanded)
     info = {

@@ -57,14 +57,14 @@ if __name__ == "__main__":
         ).json()
         if sys.argv[1] in ["pxe", "bios"]:
             confirm = input(
-                f"Set 1-time boot and force a reboot for {device['name']}? (Vendor {info['Vendor']}) (y/n) "
+                f"Set 1-time boot and force a reboot for {device['name']}? (y/n) "
             )
         elif sys.argv[1] in ["setpxe", "setbios"]:
             confirm = input(
-                f"Set 1-time boot for {device['name']}? (Vendor {info['Vendor']}) (y/n) "
+                f"Set 1-time boot for {device['name']}? (y/n) "
             )
         elif sys.argv[1] in ["reboot", "poweroff"]:
-            confirm = input(f"Reboot {device['name']}? (Vendor {info['Vendor']} (y/n) ")
+            confirm = input(f"Reboot {device['name']}? (y/n) ")
         elif sys.argv[1] in ["boot"]:
             confirm = "y"
         else:
@@ -84,13 +84,20 @@ if __name__ == "__main__":
                     }
                 }
                 r = requests.patch(
-                    f"https://{bmc_ip}/redfish/v1/Systems/1",
+                    f"https://{bmc_ip}/redfish/v1/Systems/System.Embedded.1",
                     json=js,
                     verify=False,
                     auth=bmc_auth,
                 )
                 print(f"{device['name']} - {r.status_code}")
                 print(f"{device['name']} - {r.text}")
+                if r.status_code != 200:
+                    r = requests.patch(
+                        f"https://{bmc_ip}/redfish/v1/Systems/1",
+                        json=js,
+                        verify=False,
+                        auth=bmc_auth,
+                    )
             if sys.argv[1] in ["reboot", "poweroff", "pxe", "bios"]:
                 print(f"BMC IP: {bmc_ip}")
                 # Force Off
@@ -117,7 +124,7 @@ if __name__ == "__main__":
             if sys.argv[1] in ["boot", "reboot", "pxe", "bios"]:
                 print(f"{device['name']} - Powering Up")
                 try:
-                    if info["Vendor"] == "Dell":
+                    if info["Product"] == "Integrated Dell Remote Access Controller" or ('Vendor' in info and info["Vendor"] == "Dell"):
                         r = requests.post(
                             f"https://{bmc_ip}/redfish/v1/Systems/System.Embedded.1/Actions/ComputerSystem.Reset",
                             json={"ResetType": "On"},
@@ -134,4 +141,5 @@ if __name__ == "__main__":
                     print(f"{device['name']} - {r.status_code}")
                     print(f"{device['name']} - {r.text}")
                 except Exception as e:
-                    print(f"{device['name']} - {e}")
+                    import traceback
+                    print(f"{device['name']} - {traceback.format_exc()}")

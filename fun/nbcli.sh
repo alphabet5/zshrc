@@ -31,3 +31,51 @@ function nb-devices() {
   done
   printf '%s\n' "$all" | jq -rc
 }
+
+
+update-nb-dns() {
+  local csv="$1"
+
+  if [[ -z "$csv" ]]; then
+    echo "Usage: update-nb-dns <csv_file>"
+    return 1
+  fi
+  if [[ ! -f "$csv" ]]; then
+    echo "File not found: $csv"
+    return 1
+  fi
+
+  # Read id,dns_name from CSV (no header). Handle missing newline at EOF.
+  while IFS=, read -r id dns_name || [[ -n "$id$dns_name" ]]; do
+    # Skip blank rows
+    [[ -z "$id" || -z "$dns_name" ]] && continue
+
+    # Trim possible trailing CRs (Windows line endings)
+    id=${id%$'\r'}
+    dns_name=${dns_name%$'\r'}
+
+    echo "Updating ID $id -> $dns_name"
+
+    resp_file=$(mktemp)
+    http_code=$(
+      curl --silent --show-error --no-progress-meter \
+        --request PATCH \
+        --header "Authorization: Token $NETBOX_TOKEN" \
+        --header "Content-Type: application/json" \
+        --header "Accept: application/json" \
+        --data "{\"dns_name\":\"$dns_name\"}" \
+        --output "$resp_file" \
+        --write-out "%{http_code}" \
+        "$NETBOX_URL/api/ipam/ip-addresses/$id/"
+    )
+
+    if [[ "$http_code" =~ ^2 ]]; then
+      echo "✅ $id updated ($http_code)"
+    else
+      echo "❌ $id failed ($http_code)"
+      cat "$resp_file"
+    fi
+    rm -f "$resp_file"
+  done < "$csv"
+}
+

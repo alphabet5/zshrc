@@ -98,11 +98,11 @@ class FilterApp(App):
                 self.query_one("#error", TextArea).text = f"Exception: {str(e)}"
         else:
             self.query_one("#error", TextArea).text = "\n".join(
-                proc_stderr.split("\n")[:1000]
+                proc_stderr.split("\n")[:5000]
             )
             if word.strip() == "":
                 self.query_one("#results", TextArea).text = "\n".join(
-                    proc_stdout.split("\n")[:1000]
+                    proc_stdout.split("\n")[:5000]
                 )
             else:
                 process = await asyncio.create_subprocess_shell(
@@ -137,7 +137,7 @@ class FilterApp(App):
                 output = new_output
             except:
                 pass
-        return "\n".join(output.split("\n")[:1000])
+        return "\n".join(output.split("\n")[:5000])
 
 
 proc_stdout = ""

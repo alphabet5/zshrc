@@ -52,6 +52,53 @@ def netbox(method="GET", path="", params={}, value=None):
 def get_device(name):
     params = {"name__ic": name}
     devices = netbox(path="/api/dcim/devices/", params=params).json()
+    if devices["count"] != 0:
+        for device in devices["results"]:
+            bmc_ok = False
+            try:
+                bmc_ok = bool(
+                    ipaddress.ip_address(device["custom_fields"]["bmc_ip4"])
+                )
+                bmc_ip = device["custom_fields"]["bmc_ip4"]
+            except:
+                # try to get bmc ip from "mgmt" interface
+                print(f"BMC ip not found in custom fields for {device['name']}, trying to get from netbox.")
+                bmc_ip = None
+                try:
+                    ips = netbox(path=f"/api/ipam/ip-addresses/", params={"device_id": device["id"]}).json()
+                    for ip in ips["results"]:
+                        if ip["assigned_object"]["display"].lower() == "mgmt":
+                            bmc_ok = True
+                            remove_netmask = re.match(r"(.*)/.*", ip["address"]).group(1)
+                            bmc_ok = bool(ipaddress.ip_address(remove_netmask))
+                            bmc_ip = remove_netmask
+                            break
+                except:
+                    import traceback
+                    print(traceback.format_exc())
+                    pass
+            if bmc_ok:
+                device["custom_fields"]["mgmt_ip4"] = bmc_ip
+            found_ints = False
+            interfaces = netbox(path="/api/dcim/interfaces/", params={"device_id": device['id']}).json()
+            for interface in interfaces["results"]:
+                try:
+                    if interface["name"].lower() in ["lan0", "eno1"]:
+                        if "connected_endpoints" not in interface or len(interface["connected_endpoints"]) == 0:
+                            print("No connected endpoints for interface {interface['name']} on device {device['name']}")
+                            break
+                        else:
+                            switchname = interface["connected_endpoints"][0]["device"]["name"]
+                            switchint = interface["connected_endpoints"][0]["name"]
+                            device["custom_fields"]["switch_name"] = switchname
+                            device["custom_fields"]["switch_int"] = switchint
+                            found_ints = True
+                            break
+                except:
+                    logger.error(f"Error getting connected endpoints for interface {interface['name']} on device {device['name']}")
+            if not found_ints:
+                device["custom_fields"]["switch_name"] = None
+                device["custom_fields"]["switch_int"] = None
     try:
         if devices["count"] == 0:
             devices = netbox(
@@ -148,30 +195,10 @@ if __name__ == "__main__":
                 row.append(None) # interface
                 row.append(None) # k8s cluster
             else:
-                bmc_ok = False
                 try:
-                    bmc_ok = bool(
-                        ipaddress.ip_address(device["custom_fields"]["bmc_ip4"])
-                    )
-                    bmc_ip = device["custom_fields"]["bmc_ip4"]
+                    row.append(device["custom_fields"]["mgmt_ip4"])
                 except:
-                    # try to get bmc ip from "mgmt" interface
-                    print(f"BMC ip not found in custom fields for {device['name']}, trying to get from netbox.")
-                    bmc_ip = None
-                    try:
-                        ips = netbox(path=f"/api/ipam/ip-addresses/", params={"device_id": device["id"]}).json()
-                        for ip in ips["results"]:
-                            if ip["assigned_object"]["display"].lower() == "mgmt":
-                                bmc_ok = True
-                                remove_netmask = re.match(r"(.*)/.*", ip["address"]).group(1)
-                                bmc_ok = bool(ipaddress.ip_address(remove_netmask))
-                                bmc_ip = remove_netmask
-                                break
-                    except:
-                        import traceback
-                        print(traceback.format_exc())
-                        pass
-                row.append(bmc_ip)
+                    row.append(None)
                 row.append(device["device_type"]["display"])
                 try:
                     row.append(device["parent_device"]["display"])
@@ -182,22 +209,13 @@ if __name__ == "__main__":
                 except:
                     row.append(None)
                 try:
-                    found_ints = False
-                    interfaces = netbox(path="/api/dcim/interfaces/", params={"device_id": device['id']}).json()
-                    for interface in interfaces["results"]:
-                        if interface["name"].lower() in ["lan0", "eno1"]:
-                            switchname = interface["connected_endpoints"][0]["device"]["name"]
-                            switchint = interface["connected_endpoints"][0]["name"]
-                            row.append(switchname)
-                            row.append(switchint)
-                            found_ints = True
-                            break
-                    if not found_ints:
-                        row.append(None)
-                        row.append(None)
+                    row.append(device["custom_fields"]["switch_name"])
+                except:
+                    row.append(None)
+                try:
+                    row.append(device["custom_fields"]["switch_int"])
                 except:
                     logger.error(f"Error getting interfaces for {device['name']}")
-                    row.append(None)
                     row.append(None)
             row.append(device["custom_fields"]["k8s_cluster"])
             row.append(device["status"]["value"])

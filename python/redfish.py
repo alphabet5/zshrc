@@ -14,7 +14,7 @@ from nb import netbox, get_device
 import logging
 import ipaddress
 import re
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
 from tqdm import tqdm
 import traceback
 
@@ -45,7 +45,33 @@ match log_level:
     case _:
         logger.setLevel(logging.INFO)
 
-def run(hostinfo, path="", patch="", post="", bios=False):
+def netbox_ipmi(host):
+    device = get_device(host)['results'][0]
+    bmc_ok = False
+    bmc_ip = None
+    try:
+        bmc_ok = bool(
+            ipaddress.ip_address(device["custom_fields"]["bmc_ip4"])
+        )
+        bmc_ip = device["custom_fields"]["bmc_ip4"]
+    except:
+        # try to get bmc ip from "mgmt" interface
+        bmc_ip = None
+        try:
+            ips = netbox(path=f"/api/ipam/ip-addresses/", params={"device_id": device["id"]}).json()
+            for ip in ips["results"]:
+                if ip["assigned_object"]["display"].lower() == "mgmt":
+                    bmc_ok = True
+                    remove_netmask = re.match(r"(.*)/.*", ip["address"]).group(1)
+                    bmc_ok = bool(ipaddress.ip_address(remove_netmask))
+                    bmc_ip = remove_netmask
+                    break
+        except:
+            logger.error(traceback.format_exc())
+            pass
+    return (host, bmc_ip)
+
+def run(hostinfo, path="", patch="", post="", bios=False, jobs=False, timeout=60):
     ctx = urllib3.util.create_urllib3_context()
     ctx.set_ciphers("DEFAULT@SECLEVEL=0")
     ctx.check_hostname = False
@@ -62,12 +88,14 @@ def run(hostinfo, path="", patch="", post="", bios=False):
                 f"https://{host}/redfish/v1/Systems/1",
                 verify=False,
                 auth=bmc_auth,
+                timeout=timeout,
             )
             if i.status_code == 404:
                 i = session.get(
                     f"https://{host}/redfish/v1/Systems/System.Embedded.1",
                     verify=False,
                     auth=bmc_auth,
+                    timeout=timeout,
                 )
             try:
                 info = i.json()
@@ -76,12 +104,45 @@ def run(hostinfo, path="", patch="", post="", bios=False):
                 logger.error("{" + f'Status: {i.status_code}, "text": {i.text}' + "]")
                 return {'host': name, 'ip': host, 'output': "Error: Failed to decode JSON response."}
             return {'host': name, 'ip': host, 'output': info}
+        elif jobs:
+            i = session.get(
+                f"https://{host}/redfish/v1/Managers/iDRAC.Embedded.1/Jobs",
+                verify=False,
+                auth=bmc_auth,
+                timeout=timeout,
+            )
+            try:
+                info = i.json()
+            except json.JSONDecodeError:
+                logger.error(json.dumps({'error': "Failed to decode JSON response.", 'host': name}))
+                logger.error("{" + f'Status: {i.status_code}, "text": {i.text}' + "]")
+                return {'host': name, 'ip': host, 'output': "Error: Failed to decode JSON response."}
+            # check if 'Members' key exists. Some servers use TaskService instead of JobService.
+            if 'Members' not in info:
+                return {'host': name, 'ip': host, 'output': "Error: No Jobs found on this system.", 'value': info}
+            job_list = []
+            for job in info['Members']:
+                ji = session.get(
+                    f"https://{host}{job['@odata.id']}",
+                    verify=False,
+                    auth=bmc_auth,
+                    timeout=timeout,
+                )
+                try:
+                    job_info = ji.json()
+                except json.JSONDecodeError:
+                    logger.error(json.dumps({'error': "Failed to decode JSON response.", 'host': name}))
+                    logger.error("{" + f'Status: {ji.status_code}, "text": {ji.text}' + "]")
+                    return {'host': name, 'ip': host, 'output': "Error: Failed to decode JSON response."}
+                job_list.append(job_info)
+            return {'host': name, 'ip': host, 'output': job_list}
         elif len(patch) > 0:
             i = session.patch(
                 f"https://{host}/{path}",
                 verify=False,
                 auth=bmc_auth,
                 json=json.loads(patch),
+                timeout=timeout,
             )
             try:
                 info = i.json()
@@ -95,6 +156,7 @@ def run(hostinfo, path="", patch="", post="", bios=False):
                 verify=False,
                 auth=bmc_auth,
                 json=json.loads(post),
+                timeout=timeout,
             )
             try:
                 info = i.json()
@@ -104,18 +166,19 @@ def run(hostinfo, path="", patch="", post="", bios=False):
                 info = i.text
         else:
             try:
-                tries = 0
-                retry = True
-                while tries <= 5 and retry:
+                max_retries = 5
+                for attempt in range(max_retries + 1):
                     i = session.get(
                         f"https://{host}/{path}",
                         verify=False,
                         auth=bmc_auth,
+                        timeout=timeout,
                     )
-                    if i.status_code >= 500:
-                        retry = True
-                    else:
-                        retry = False
+                    if i.status_code < 500:
+                        break
+                    if attempt == max_retries:
+                        break
+                    sleep(1)
             except requests.exceptions.ConnectTimeout as e:
                 logger.error(f"Connection error for host {name}: {e}")
                 return {'host': name, 'ip': host, 'output': "Error: Connection failed."}
@@ -129,7 +192,7 @@ def run(hostinfo, path="", patch="", post="", bios=False):
                 logger.error("{" + f'Status: {i.status_code}, "text": {i.text}' + "}")
                 info = i.text
         return {'host': name, 'ip': host, 'output': info}
-    except requests.exceptions.ConnectTimeout as e:
+    except requests.exceptions.Timeout as e:
         logger.error(f"Connection error for host {name}: {e}")
         return {'host': name, 'ip': host, 'output': "Error: Connection timeout."}
     except:
@@ -180,50 +243,66 @@ if __name__ == "__main__":
         default="",
         help="Custom json post to apply to the specified path."
     )
+    parser.add_argument(
+        "--jobs",
+        action='store_true',
+        help="Collect job status information."
+    )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=int(os.getenv("REDFISH_TIMEOUT", 60)),
+        help="Max seconds to wait for each host run before timing out."
+    )
     args = parser.parse_args()
     if args.netbox:
-        hosts = []
-        for host in args.hosts:
-            device = get_device(host)['results'][0]
-            bmc_ok = False
-            bmc_ip = None
-            try:
-                bmc_ok = bool(
-                    ipaddress.ip_address(device["custom_fields"]["bmc_ip4"])
+        logging.info("Fetching BMC IPs from NetBox...")
+        with ThreadPoolExecutor(max_workers=80) as ex:
+            hosts = list(
+                tqdm(
+                    ex.map(netbox_ipmi, args.hosts), 
+                    total=len(args.hosts)
                 )
-                bmc_ip = device["custom_fields"]["bmc_ip4"]
-            except:
-                # try to get bmc ip from "mgmt" interface
-                bmc_ip = None
-                try:
-                    ips = netbox(path=f"/api/ipam/ip-addresses/", params={"device_id": device["id"]}).json()
-                    for ip in ips["results"]:
-                        if ip["assigned_object"]["display"].lower() == "mgmt":
-                            bmc_ok = True
-                            remove_netmask = re.match(r"(.*)/.*", ip["address"]).group(1)
-                            bmc_ok = bool(ipaddress.ip_address(remove_netmask))
-                            bmc_ip = remove_netmask
-                            break
-                except:
-                    logger.error(traceback.format_exc())
-                    pass
-            hosts.append((host, bmc_ip))
+            )
     else:
         hosts = [(host, host) for host in args.hosts]
-    if len(args.path) > 0 or args.bios:
+    if len(args.path) > 0 or args.bios or args.jobs:
         with ThreadPoolExecutor(max_workers=80) as ex:
-            # Use map to call run(hostinfo, path, patch, bios) for each hostinfo
-            results = list(tqdm(ex.map(
-                    lambda hostinfo: run(
+            futures = [
+                (
+                    hostinfo,
+                    ex.submit(
+                        run,
                         hostinfo=hostinfo,
                         path=args.path,
                         patch=args.patch,
                         post=args.post,
-                        bios=args.bios
-                    ),
-                    hosts
-                ), total=len(hosts)))
-            for res in results:
+                        bios=args.bios,
+                        jobs=args.jobs,
+                        timeout=args.timeout,
+                    )
+                )
+                for hostinfo in hosts
+            ]
+            for hostinfo, future in tqdm(futures, total=len(hosts)):
+                try:
+                    res = future.result(timeout=args.timeout)
+                except FuturesTimeout:
+                    logger.error(f"Timeout processing host {hostinfo[0]} after {args.timeout}s")
+                    future.cancel()
+                    res = {
+                        'host': hostinfo[0],
+                        'ip': hostinfo[1],
+                        'output': f"Error: run timeout after {args.timeout} seconds."
+                    }
+                except Exception:
+                    err = traceback.format_exc()
+                    logger.error(f"Unexpected executor error for host {hostinfo[0]}: {err}")
+                    res = {
+                        'host': hostinfo[0],
+                        'ip': hostinfo[1],
+                        'output': f"Error: Unexpected executor error. {err}"
+                    }
                 print(json.dumps(res))
         # futures = []
         # ex = ThreadPoolExecutor(max_workers=80)

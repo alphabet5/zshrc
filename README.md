@@ -46,7 +46,8 @@ cp dns/Corefile
 
 ```bash
 brew install rsync
-
+brew tap cloudflare/cloudflare
+brew install cloudflare/cloudflare/cf-terraforming
 ```
 
 #### dns/Corefile example
@@ -155,6 +156,7 @@ brew install derailed/popeye/popeye
 brew install --cask graphiql
 kubectl krew install neat
 brew install trivy
+brew install --cask monitorcontrol
 ```
 
 

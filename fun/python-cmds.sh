@@ -3,69 +3,73 @@ function actions() {
 }
 
 function filter() {
-  python3.12 $MYDIR/python/filter.py "$@"
+  python3 $MYDIR/python/filter.py "$@"
 }
 
 function jira() {
-  python3.12 $MYDIR/python/j.py "$@"
+  python3 $MYDIR/python/j.py "$@"
 }
 
 function nsr() {
-  python3.12 $MYDIR/python/nsr.py "$@"
+  python3 $MYDIR/python/nsr.py "$@"
 }
 
 function table() {
-    python3.12 $MYDIR/python/prettytable.py
+    python3 $MYDIR/python/prettytable.py
 }
 
 function silence() {
-  python3.12 $MYDIR/python/silence.py "$@"
+  python3 $MYDIR/python/silence.py "$@"
 }
 
 function poweroff-host() {
-    python3.12 $MYDIR/python/reboot-bmc.py poweroff "$@"
+    python3 $MYDIR/python/reboot-bmc.py poweroff "$@"
 }
 
 function reboot-host() {
-  python3.12 $MYDIR/python/reboot-bmc.py reboot "$@"
+  python3 $MYDIR/python/reboot-bmc.py reboot "$@"
 }
 
 function boot-host() {
-  python3.12 $MYDIR/python/reboot-bmc.py boot "$@"
+  python3 $MYDIR/python/reboot-bmc.py boot "$@"
 }
 
 function pxe-boot() {
-    python3.12 $MYDIR/python/reboot-bmc.py pxe "$@"
+    python3 $MYDIR/python/reboot-bmc.py pxe "$@"
 }
 
 function set-pxe() {
-    python3.12 $MYDIR/python/reboot-bmc.py setpxe "$@"
+    python3 $MYDIR/python/reboot-bmc.py setpxe "$@"
 }
 
 function bios-boot() {
-    python3.12 $MYDIR/python/reboot-bmc.py bios "$@"
+    python3 $MYDIR/python/reboot-bmc.py bios "$@"
 }
 
 function set-bios() {
-    python3.12 $MYDIR/python/reboot-bmc.py setbios "$@"
+    python3 $MYDIR/python/reboot-bmc.py setbios "$@"
 }
 
 function redfish() {
-    python3.12 $MYDIR/python/redfish.py "$@"
+    python3 $MYDIR/python/redfish.py "$@"
 }
 
 function run-commands() {
-  python3.12 $MYDIR/python/run-commands.py "$@"
+  python3 $MYDIR/python/run-commands.py "$@"
 }
 
 function ysort() {
-  python3.12 $MYDIR/python/ysort.py "$@"
+  python3 $MYDIR/python/ysort.py "$@"
 }
 
 function summary() {
-    python3.12 $MYDIR/python/summary-networks.py "$@"
+    python3 $MYDIR/python/summary-networks.py "$@"
 }
 
 function inverse() {
-    python3.12 $MYDIR/python/summary-networks.py "$@"
+    python3 $MYDIR/python/summary-networks.py "$@"
+}
+
+function ome() {
+    python3 $MYDIR/python/ome.py "$@"
 }
