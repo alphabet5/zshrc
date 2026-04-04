@@ -55,20 +55,25 @@ if __name__ == "__main__":
             verify=False,
             auth=bmc_auth,
         ).json()
-        if sys.argv[1] in ["pxe", "bios"]:
-            confirm = input(
-                f"Set 1-time boot and force a reboot for {device['name']}? (y/n) "
-            )
-        elif sys.argv[1] in ["setpxe", "setbios"]:
-            confirm = input(
-                f"Set 1-time boot for {device['name']}? (y/n) "
-            )
-        elif sys.argv[1] in ["reboot", "poweroff"]:
-            confirm = input(f"Reboot {device['name']}? (y/n) ")
-        elif sys.argv[1] in ["boot"]:
+        if sys.argv[-1] == "--do-not-confirm":
             confirm = "y"
         else:
-            confirm = "n"
+            if sys.argv[1] in ["pxe", "bios"]:
+                confirm = input(
+                    f"Set 1-time boot and force a reboot for {device['name']}? (y/n) "
+                )
+            elif sys.argv[1] in ["setpxe", "setbios"]:
+                confirm = input(
+                    f"Set 1-time boot for {device['name']}? (y/n) "
+                )
+            elif sys.argv[1] in ["reboot"]:
+                confirm = input(f"Reboot {device['name']}? (y/n) ")
+            elif sys.argv[1] in ["poweroff"]:
+                confirm = input(f"Power off {device['name']}? (y/n) ")
+            elif sys.argv[1] in ["boot"]:
+                confirm = "y"
+            else:
+                confirm = "n"
         if confirm == "y":
             if sys.argv[1] in ["pxe", "setpxe", "bios", "setbios"]:
                 if sys.argv[1] in ["pxe", "setpxe"]:
@@ -102,14 +107,30 @@ if __name__ == "__main__":
                 print(f"BMC IP: {bmc_ip}")
                 # Force Off
                 print("Forcing Off")
-                if info["Vendor"] == "Dell":
+                if "Vendor" in info:
+                    if info["Vendor"] == "Dell":
+                        vendor = "dell"
+                    elif info["Vendor"] == "Supermicro":
+                        vendor = "supermicro"
+                    else:
+                        print("Unknown vendor -- device info:")
+                        print(info)
+                        sys.exit(1)
+                elif "Oem" in info:
+                    if "Dell" in info["Oem"]:
+                        vendor = "dell"
+                else:
+                    print("Unknown vendor - device info:")
+                    print(info)
+                    sys.exit(1)
+                if vendor == "dell":
                     r = requests.post(
                         f"https://{bmc_ip}/redfish/v1/Systems/System.Embedded.1/Actions/ComputerSystem.Reset",
                         json={"ResetType": "ForceOff"},
                         verify=False,
                         auth=bmc_auth,
                     )
-                elif info["Vendor"] == "Supermicro":
+                elif vendor == "supermicro":
                     r = requests.post(
                         f"https://{bmc_ip}/redfish/v1/Systems/1/Actions/ComputerSystem.Reset",
                         json={"ResetType": "ForceOff"},
@@ -118,8 +139,9 @@ if __name__ == "__main__":
                     )
                 print(f"{device['name']} - {r.status_code}")
                 print(f"{device['name']} - {r.text}")
-                print("Waiting 10 seconds...")
-                sleep(10)
+                if sys.argv[1] in ["reboot", "pxe", "bios"]:
+                    print("Waiting 10 seconds...")
+                    sleep(10)
                 # Force On
             if sys.argv[1] in ["boot", "reboot", "pxe", "bios"]:
                 print(f"{device['name']} - Powering Up")

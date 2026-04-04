@@ -73,3 +73,7 @@ function inverse() {
 function ome() {
     python3 $MYDIR/python/ome.py "$@"
 }
+
+function cinets() {
+    python3 $MYDIR/python/cine-timestamp.py "$@"
+}

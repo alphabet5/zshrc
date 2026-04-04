@@ -48,6 +48,8 @@ cp dns/Corefile
 brew install rsync
 brew tap cloudflare/cloudflare
 brew install cloudflare/cloudflare/cf-terraforming
+brew install --cask headlamp
+xattr -dr com.apple.quarantine /Applications/Headlamp.app
 ```
 
 #### dns/Corefile example
@@ -92,6 +94,9 @@ KUBESEAL_CERT="/path/to/sealedsecrets.crt"
 KUBESEAL_SCOPE="cluster-wide"
 CEPH_RBD_CSI_NAMESPACE=ceph
 DEBUG_IMAGE=alphabet5/tools
+PODMAN_COMPOSE_PROVIDER=podman-compose
+COMPOSE_BAKE=0
+QUOTECHAR='
 ```
 
 ## ksniff
@@ -157,6 +162,7 @@ brew install --cask graphiql
 kubectl krew install neat
 brew install trivy
 brew install --cask monitorcontrol
+brew install podman-compose
 ```
 
 

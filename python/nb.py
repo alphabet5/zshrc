@@ -148,7 +148,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    valid_actions = ["patch", "devices", "detail", "details" "ip", "ips"]
+    valid_actions = ["patch", "devices", "detail", "details" "ip", "ips", "interfaces"]
     if args.action not in valid_actions:
         args.vars = [args.action] + args.vars
         args.action = "get"
@@ -269,7 +269,7 @@ if __name__ == "__main__":
                 print(f"{host}: Error")
     elif args.action == "devices":
         all_devices = []
-        devices = netbox(path="/api/dcim/devices/", params={"limit": 10000}).json()
+        devices = netbox(path="/api/dcim/devices/", params={"limit": 1000}).json()
         all_devices = all_devices + devices["results"]
         while devices["next"] is not None:
             devices = netbox(path=devices["next"]).json()
@@ -282,6 +282,14 @@ if __name__ == "__main__":
             virtual_machines = netbox(path=virtual_machines["next"]).json()
             all_devices = all_devices + virtual_machines["results"]
         print(json.dumps(all_devices, indent=4))
+    elif args.action == "interfaces":
+        all_interfaces = []
+        interfaces = netbox(path="/api/dcim/interfaces/", params={"limit": 1000}).json()
+        all_interfaces = all_interfaces + interfaces["results"]
+        while interfaces["next"] is not None:
+            interfaces = netbox(path=interfaces["next"]).json()
+            all_interfaces = all_interfaces + interfaces["results"]
+        print(json.dumps(all_interfaces, indent=4))
     elif args.action in ["ip", "ips"]:
         all_ips = []
         params = {"limit": 10000}
