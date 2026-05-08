@@ -228,6 +228,12 @@ if __name__ == "__main__":
         action="store_true",
         help="Run commands locally instead of on remote hosts. Commands ran will replace $VAR with the value of the list of inputs."
     )
+    parser.add_argument(
+        "--parallel",
+        type=int,
+        default=80,
+        help="Number of parallel workers. Default is 80.",
+    )
 
     # Parse arguments
     args = parser.parse_args()
@@ -260,7 +266,7 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         sys.exit(0)
     futures = []
-    ex = ThreadPoolExecutor(max_workers=80)
+    ex = ThreadPoolExecutor(max_workers=args.parallel)
     for var in vars:
         # host_list.append({"hostname": host})
         futures.append(ex.submit(run, var=var, commands=commands, timing=timing, scripts=scripts, local=args.local))

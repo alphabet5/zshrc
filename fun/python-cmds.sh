@@ -77,3 +77,11 @@ function ome() {
 function cinets() {
     python3 $MYDIR/python/cine-timestamp.py "$@"
 }
+
+function prom-validate() {
+    python3 $MYDIR/python/prom-validate.py "$@"
+}
+
+function flux-unmanaged() {
+    python3 $MYDIR/python/flux-managed.py "$@"
+}

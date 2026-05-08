@@ -79,3 +79,37 @@ update-nb-dns() {
   done < "$csv"
 }
 
+
+function nb-add-ip() {
+  local ip="$1"
+  local description="$2"
+  local dns="$3"
+
+  local payload
+  payload=$(jq -n \
+    --arg address "$ip" \
+    --arg description "$description" \
+    --arg dns "$dns" \
+    '{address: $address, status: "active", description: $description, dns_name: $dns}')
+
+  curl -sS -X POST \
+    -H "Authorization: Token $NETBOX_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$payload" \
+    "$NETBOX_URL/api/ipam/ip-addresses/" | jq
+}
+
+function nb-add-ips() {
+  local input_file="${1:-ips.tsv}"
+
+  if [ ! -f "$input_file" ]; then
+    echo "File not found: $input_file" >&2
+    return 1
+  fi
+
+  tail -n +2 "$input_file" | while IFS=$'\t' read -r ip description dns; do
+    [ -z "$ip" ] && continue
+    echo "Adding $ip ($description) -> $dns"
+    nb-add-ip "$ip" "$description" "$dns"
+  done
+}
