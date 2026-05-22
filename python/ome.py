@@ -7,7 +7,6 @@ import requests
 import os
 import re
 from datetime import timedelta
-from datetime import datetime
 import logging
 
 log_level = os.environ.get("LOG_LEVEL", "INFO").upper()

@@ -18,6 +18,7 @@ eval "$(
   done
 )"
 
+source $MYDIR/.venv/bin/activate
 source $MYDIR/aliases/alias.sh
 for file in $(ls $MYDIR/fun); do source $MYDIR/fun/$file;done;
 for file in $(ls $MYDIR/remote-run); do source $MYDIR/remote-run/$file;done;

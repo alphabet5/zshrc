@@ -17,6 +17,32 @@ from paramiko.ssh_exception import SSHException
 import re
 import paramiko.rsakey
 import paramiko.ed25519key
+import paramiko.channel
+from paramiko.agent import AgentRequestHandler
+from contextlib import contextmanager, nullcontext
+
+
+@contextmanager
+def _agent_forwarding_on_invoke_shell():
+    """Temporarily patch paramiko.Channel.invoke_shell so that an
+    auth-agent-req is sent on the channel BEFORE the shell is invoked.
+    sshd only injects SSH_AUTH_SOCK into the shell's environment if the
+    forwarding request arrives before the shell process is started, so
+    requesting it after ConnectHandler returns is too late."""
+    original = paramiko.channel.Channel.invoke_shell
+
+    def patched(self, *args, **kwargs):
+        try:
+            AgentRequestHandler(self)
+        except Exception:
+            logger.warning("Failed to request SSH agent forwarding: " + traceback.format_exc())
+        return original(self, *args, **kwargs)
+
+    paramiko.channel.Channel.invoke_shell = patched
+    try:
+        yield
+    finally:
+        paramiko.channel.Channel.invoke_shell = original
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler(sys.stderr))
@@ -47,7 +73,7 @@ def is_open(ip, port, timeout=5):
     return False
 
 
-def connect(host):
+def connect(host, agent_forwarding=True):
     key_file = os.getenv("SSH_KEY_FILE", "~/.ssh/id_rsa")
     key_file_expanded = os.path.expanduser(key_file)
     key = paramiko.rsakey.RSAKey(filename=key_file_expanded)
@@ -63,14 +89,16 @@ def connect(host):
         "key_file": key_file,
         "allow_agent": True,
     }
-    try:
-        conn = ConnectHandler(**info)
-    except (NetMikoAuthenticationException, ValueError, SSHException):
-        key_file = "~/.ssh/id_ed25519"
-        key_file_expanded = os.path.expanduser(key_file)
-        key = paramiko.ed25519key.Ed25519Key(filename=key_file_expanded)
-        info["pkey"] = key
-        conn = ConnectHandler(**info)
+    cm = _agent_forwarding_on_invoke_shell() if agent_forwarding else nullcontext()
+    with cm:
+        try:
+            conn = ConnectHandler(**info)
+        except (NetMikoAuthenticationException, ValueError, SSHException):
+            key_file = "~/.ssh/id_ed25519"
+            key_file_expanded = os.path.expanduser(key_file)
+            key = paramiko.ed25519key.Ed25519Key(filename=key_file_expanded)
+            info["pkey"] = key
+            conn = ConnectHandler(**info)
     return conn
 
 def try_parse_json(o):
@@ -98,7 +126,7 @@ def try_parse_json(o):
         logging.error(f"Error parsing JSON: {e}")
         return o
 
-def run(var, commands, timing, scripts, local):
+def run(var, commands, timing, scripts, local, agent_forwarding=True):
     output = {}
     errors = {}
     simple = ""
@@ -127,7 +155,7 @@ def run(var, commands, timing, scripts, local):
     else:
         for retries in range(100):
             try:
-                conn = connect(var)
+                conn = connect(var, agent_forwarding=agent_forwarding)
                 logging.info("Connected to " + var)
                 for command in commands:
                     if timing > 0:
@@ -234,6 +262,13 @@ if __name__ == "__main__":
         default=80,
         help="Number of parallel workers. Default is 80.",
     )
+    parser.add_argument(
+        "--no-agent-forwarding",
+        dest="agent_forwarding",
+        action="store_false",
+        help="Disable SSH agent forwarding (enabled by default).",
+    )
+    parser.set_defaults(agent_forwarding=True)
 
     # Parse arguments
     args = parser.parse_args()
@@ -269,7 +304,7 @@ if __name__ == "__main__":
     ex = ThreadPoolExecutor(max_workers=args.parallel)
     for var in vars:
         # host_list.append({"hostname": host})
-        futures.append(ex.submit(run, var=var, commands=commands, timing=timing, scripts=scripts, local=args.local))
+        futures.append(ex.submit(run, var=var, commands=commands, timing=timing, scripts=scripts, local=args.local, agent_forwarding=args.agent_forwarding))
 
     for future in futures:
         var, output, errors, simple = future.result()

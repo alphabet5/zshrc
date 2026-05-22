@@ -1,0 +1,1 @@
+alias py='source .venv/bin/activate'

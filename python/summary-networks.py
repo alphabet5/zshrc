@@ -59,14 +59,15 @@ def main():
         networks_to_subtract = list()
         
         for nw in sys.argv[2:]:
-            if "\n" in nw:
-                for n in nw.split('\n'):
-                    try:
-                        test = ipaddress.ip_network(n)
-                        if test:
-                            networks_to_subtract.append(n)
-                    except:
-                        print(f"Error parsing network {n}")
+            for n in nw.split('\n'):
+                n = n.strip()
+                if not n:
+                    continue
+                try:
+                    ipaddress.ip_network(n)
+                    networks_to_subtract.append(n)
+                except ValueError:
+                    print(f"Error parsing network {n}")
         
         # Get the result networks
         result = subtract_networks(parent_network, networks_to_subtract)

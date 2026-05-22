@@ -85,3 +85,8 @@ function prom-validate() {
 function flux-unmanaged() {
     python3 $MYDIR/python/flux-managed.py "$@"
 }
+
+function host() {
+    python3 $MYDIR/python/host.py "$@"
+}
+

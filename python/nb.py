@@ -33,7 +33,7 @@ def netbox(method="GET", path="", params={}, value=None):
     if "http" == path[:4]:
         full_url = path
     else:
-        full_url = f"{nb_url}/{path}"
+        full_url = f"{nb_url.rstrip('/')}/{path.lstrip('/')}"
     if method == "GET":
         return requests.get(full_url, headers=nb_headers, params=params)
     elif method == "PATCH":
