@@ -29,6 +29,13 @@ uv pip install rich textual jira requests pyperclip diagrams pandas netmiko jobl
 brew install mcs
 brew install gron
 brew install graphviz
+brew install direnv
+brew tap hashicorp/tap
+brew install hashicorp/tap/vault
+brew install awscli
+brew install 1password-cli
+brew install watch
+brew install jo
 ```
 
 ### coredns

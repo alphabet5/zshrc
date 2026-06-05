@@ -34,6 +34,27 @@ kgpnt() {
 }
 
 k() {
+  container=""
+  case "$1" in
+    ex|exsh)
+      action="$1"
+      shift
+      args=()
+      while [ $# -gt 0 ]; do
+        case "$1" in
+          -c)
+            container="$2"
+            shift 2
+            ;;
+          *)
+            args+=("$1")
+            shift
+            ;;
+        esac
+      done
+      set -- "$action" "${args[@]}"
+      ;;
+  esac
   case "$1" in
     ex|exsh|sniff|nsenter|l|delete|)
       if [ $3 ]; then
@@ -45,14 +66,18 @@ k() {
       fi
     ;;
   esac
+  cflag=""
+  if [ -n "$container" ]; then
+    cflag="-c $container"
+  fi
   case "$1" in
     ex)
-      echo "kubectl exec --stdin --tty -n "${podnt[1]}" "${podnt[2]}" -- bash"
-      kubectl exec --stdin --tty -n ${podnt[1]} ${podnt[2]} -- bash
+      echo "kubectl exec --stdin --tty -n "${podnt[1]}" "${podnt[2]}" $cflag -- bash"
+      kubectl exec --stdin --tty -n ${podnt[1]} ${podnt[2]} ${=cflag} -- bash
       ;;
     exsh)
-      echo "kubectl exec --stdin --tty -n "${podnt[1]}" "${podnt[2]}" -- sh"
-      kubectl exec --stdin --tty -n ${podnt[1]} ${podnt[2]} -- sh
+      echo "kubectl exec --stdin --tty -n "${podnt[1]}" "${podnt[2]}" $cflag -- sh"
+      kubectl exec --stdin --tty -n ${podnt[1]} ${podnt[2]} ${=cflag} -- sh
       ;;
     sniff)
       if [ $5 ]; then

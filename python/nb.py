@@ -125,7 +125,7 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "action",
-        help="Action to perform: get, patch, devices, ips.",
+        help="Action to perform: get, patch, devices, interfaces, ip, ips, detail, details.",
         nargs="?",
     )
 
@@ -141,6 +141,13 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "--interfaces",
+        nargs="+",
+        default=[],
+        help="Interface IDs to patch instead of devices/VMs.",
+    )
+
+    parser.add_argument(
         "--tsv",
         action="store_true",
         help="Output to tsv instead of table format."
@@ -148,7 +155,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    valid_actions = ["patch", "devices", "detail", "details" "ip", "ips", "interfaces"]
+    valid_actions = ["patch", "devices", "detail", "details", "ip", "ips", "interfaces"]
     if args.action not in valid_actions:
         args.vars = [args.action] + args.vars
         args.action = "get"
@@ -239,34 +246,49 @@ if __name__ == "__main__":
             console.print(table)
     elif args.action == "patch":
         patch = json.loads(args.patch)
-        for host in args.vars:
+        for int_id in args.interfaces:
             try:
-                print(f"Patching {host} with {args.patch}")
-                try:
-                    device = netbox(
-                        path=f"/api/dcim/devices/", params={"name__ic": host}
-                    ).json()
-                    id = device["results"][0]["id"]
-                    result = netbox(
-                        method="PATCH", path=f"/api/dcim/devices/{id}/", value=patch
-                    )
-                except:
-                    device = netbox(
-                        path=f"/api/virtualization/virtual-machines/",
-                        params={"name__ic": host},
-                    ).json()
-                    id = device["results"][0]["id"]
-                    result = netbox(
-                        method="PATCH",
-                        path=f"/api/virtualization/virtual-machines/{id}/",
-                        value=patch,
-                    )
+                print(f"Patching interface {int_id} with {args.patch}")
+                result = netbox(
+                    method="PATCH",
+                    path=f"/api/dcim/interfaces/{int_id}/",
+                    value=patch,
+                )
                 if result.status_code == 200:
-                    print(f"{host}: {result.status_code}")
+                    print(f"interface {int_id}: {result.status_code}")
                 else:
-                    print(f"{host}: {result.status_code} - {result.text}")
+                    print(f"interface {int_id}: {result.status_code} - {result.text}")
             except:
-                print(f"{host}: Error")
+                print(f"interface {int_id}: Error")
+        if len(args.interfaces) == 0:
+            for host in args.vars:
+                try:
+                    print(f"Patching {host} with {args.patch}")
+                    try:
+                        device = netbox(
+                            path=f"/api/dcim/devices/", params={"name__ic": host}
+                        ).json()
+                        id = device["results"][0]["id"]
+                        result = netbox(
+                            method="PATCH", path=f"/api/dcim/devices/{id}/", value=patch
+                        )
+                    except:
+                        device = netbox(
+                            path=f"/api/virtualization/virtual-machines/",
+                            params={"name__ic": host},
+                        ).json()
+                        id = device["results"][0]["id"]
+                        result = netbox(
+                            method="PATCH",
+                            path=f"/api/virtualization/virtual-machines/{id}/",
+                            value=patch,
+                        )
+                    if result.status_code == 200:
+                        print(f"{host}: {result.status_code}")
+                    else:
+                        print(f"{host}: {result.status_code} - {result.text}")
+                except:
+                    print(f"{host}: Error")
     elif args.action == "devices":
         all_devices = []
         devices = netbox(path="/api/dcim/devices/", params={"limit": 1000}).json()
